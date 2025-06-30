@@ -8,7 +8,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { nonExistingJsonPath } from '@/constants';
 import { useClipboard } from '@/composables/useClipboard';
 import { usePinnedData } from '@/composables/usePinnedData';
@@ -25,13 +25,12 @@ const props = withDefaults(
 	defineProps<{
 		node: INodeUi;
 		paneType: string;
-		pushRef: string;
-		displayMode: string;
+		pushRef?: string;
 		distanceFromActive: number;
 		selectedJsonPath: string;
 		jsonData: IDataObject[];
-		currentOutputIndex?: number;
-		runIndex?: number;
+		outputIndex: number | undefined;
+		runIndex: number | undefined;
 	}>(),
 	{
 		selectedJsonPath: nonExistingJsonPath,
@@ -40,9 +39,10 @@ const props = withDefaults(
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 
+const clipboard = useClipboard();
+
 const i18n = useI18n();
 const nodeHelpers = useNodeHelpers();
-const clipboard = useClipboard();
 const { activeNode } = ndvStore;
 const pinnedData = usePinnedData(activeNode);
 const { showToast } = useToast();
@@ -71,7 +71,7 @@ function getJsonValue(): string {
 			selectedValue = clearJsonKey(pinnedData.data.value as object);
 		} else {
 			selectedValue = executionDataToJson(
-				nodeHelpers.getNodeInputData(props.node, props.runIndex, props.currentOutputIndex),
+				nodeHelpers.getNodeInputData(props.node, props.runIndex, props.outputIndex),
 			);
 		}
 	}
@@ -176,7 +176,7 @@ function handleCopyClick(commandData: { command: string }) {
 </script>
 
 <template>
-	<div :class="$style.actionsGroup">
+	<div :class="$style.actionsGroup" data-test-id="ndv-json-actions">
 		<n8n-icon-button
 			v-if="noSelection"
 			:title="i18n.baseText('runData.copyToClipboard')"

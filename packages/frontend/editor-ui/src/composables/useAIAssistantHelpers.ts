@@ -1,13 +1,13 @@
+import { deepCopy } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IRunExecutionData,
 	NodeApiError,
 	NodeError,
 	NodeOperationError,
+	INode,
 } from 'n8n-workflow';
-import { deepCopy, type INode } from 'n8n-workflow';
 import { useWorkflowHelpers } from './useWorkflowHelpers';
-import { useRouter } from 'vue-router';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { executionDataToJson, getMainAuthField, getNodeAuthOptions } from '@/utils/nodeTypesUtils';
@@ -15,7 +15,7 @@ import type { ChatRequest } from '@/types/assistant.types';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useDataSchema } from './useDataSchema';
 import { AI_ASSISTANT_MAX_CONTENT_LENGTH, VIEWS } from '@/constants';
-import { useI18n } from './useI18n';
+import { useI18n } from '@n8n/i18n';
 import type { IWorkflowDb } from '@/Interface';
 import { getObjectSizeInKB } from '@/utils/objectUtils';
 
@@ -29,7 +29,7 @@ export const useAIAssistantHelpers = () => {
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
 
-	const workflowHelpers = useWorkflowHelpers({ router: useRouter() });
+	const workflowHelpers = useWorkflowHelpers();
 	const locale = useI18n();
 
 	/**

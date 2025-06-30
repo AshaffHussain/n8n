@@ -4,15 +4,15 @@ import dateformat from 'dateformat';
 import { MODAL_CONFIRM, PROJECT_MOVE_RESOURCE_MODAL } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
 import CredentialIcon from '@/components/CredentialIcon.vue';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useUIStore } from '@/stores/ui.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import TimeAgo from '@/components/TimeAgo.vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { ResourceType } from '@/utils/projects.utils';
-import type { CredentialsResource } from './layouts/ResourcesListLayout.vue';
+import type { CredentialsResource } from '@/Interface';
 
 const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -134,7 +134,7 @@ function moveResource() {
 			<CredentialIcon :credential-type-name="credentialType?.name ?? ''" />
 		</template>
 		<template #header>
-			<n8n-heading tag="h2" bold :class="$style.cardHeading">
+			<n8n-text tag="h2" bold :class="$style.cardHeading">
 				{{ data.name }}
 				<N8nBadge v-if="readOnly" class="ml-3xs" theme="tertiary" bold>
 					{{ locale.baseText('credentials.item.readonly') }}
@@ -142,7 +142,7 @@ function moveResource() {
 				<N8nBadge v-if="needsSetup" class="ml-3xs" theme="warning">
 					{{ locale.baseText('credentials.item.needsSetup') }}
 				</N8nBadge>
-			</n8n-heading>
+			</n8n-text>
 		</template>
 		<div :class="$style.cardDescription">
 			<n8n-text color="text-light" size="small">
@@ -163,6 +163,7 @@ function moveResource() {
 					:resource-type="ResourceType.Credential"
 					:resource-type-label="resourceTypeLabel"
 					:personal-project="projectsStore.personalProject"
+					:show-badge-border="false"
 				/>
 				<n8n-action-toggle
 					data-test-id="credential-card-actions"

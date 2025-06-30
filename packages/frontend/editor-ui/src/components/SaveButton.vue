@@ -1,14 +1,15 @@
 <script lang="ts" setup>
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
+import type { ButtonType } from '@n8n/design-system';
 
 const props = withDefaults(
 	defineProps<{
 		saved: boolean;
 		isSaving?: boolean;
 		disabled?: boolean;
-		type?: string;
+		type?: ButtonType;
 		withShortcut?: boolean;
 		shortcutTooltip?: string;
 		savingLabel?: string;
@@ -79,7 +80,7 @@ const shortcutTooltipLabel = computed(() => {
 .saved {
 	color: $custom-font-very-light;
 	font-size: 12px;
-	font-weight: 600;
+	font-weight: var(--font-weight-bold);
 	line-height: 12px;
 	text-align: center;
 	padding: var(--spacing-2xs) var(--spacing-2xs);

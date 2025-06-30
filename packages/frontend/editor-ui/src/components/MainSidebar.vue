@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, nextTick, type Ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
+import { onClickOutside, type VueInstance } from '@vueuse/core';
+
+import { useI18n } from '@n8n/i18n';
+import { N8nNavigationDropdown, N8nTooltip, N8nLink, N8nIconButton } from '@n8n/design-system';
+import type { IMenuItem } from '@n8n/design-system';
+import { ABOUT_MODAL_KEY, RELEASE_NOTES_URL, VIEWS, WHATS_NEW_MODAL_KEY } from '@/constants';
+import { hasPermission } from '@/utils/rbac/permissions';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -11,22 +17,16 @@ import { useUsersStore } from '@/stores/users.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-
-import { hasPermission } from '@/utils/rbac/permissions';
 import { useDebounce } from '@/composables/useDebounce';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useUserHelpers } from '@/composables/useUserHelpers';
-
-import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { useBugReporting } from '@/composables/useBugReporting';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
-import { N8nNavigationDropdown, N8nTooltip, N8nLink, N8nIconButton } from '@n8n/design-system';
-import { onClickOutside, type VueInstance } from '@vueuse/core';
-import Logo from './Logo/Logo.vue';
+import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
+import Logo from '@/components/Logo/Logo.vue';
+import VersionUpdateCTA from '@/components/VersionUpdateCTA.vue';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -67,7 +67,15 @@ const userMenuItems = ref([
 	},
 ]);
 
-const mainMenuItems = computed(() => [
+const showWhatsNewNotification = computed(
+	() =>
+		versionsStore.hasVersionUpdates ||
+		versionsStore.whatsNewArticles.some(
+			(article) => !versionsStore.isWhatsNewArticleRead(article.id),
+		),
+);
+
+const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		id: 'cloud-admin',
 		position: 'bottom',
@@ -105,6 +113,17 @@ const mainMenuItems = computed(() => [
 		route: { to: { name: VIEWS.VARIABLES } },
 	},
 	{
+		id: 'insights',
+		icon: 'chart-bar',
+		label: 'Insights',
+		customIconSize: 'medium',
+		position: 'bottom',
+		route: { to: { name: VIEWS.INSIGHTS } },
+		available:
+			settingsStore.settings.activeModules.includes('insights') &&
+			hasPermission(['rbac'], { rbac: { scope: 'insights:list' } }),
+	},
+	{
 		id: 'help',
 		icon: 'question',
 		label: i18n.baseText('mainSidebar.help'),
@@ -115,7 +134,7 @@ const mainMenuItems = computed(() => [
 				icon: 'video',
 				label: i18n.baseText('mainSidebar.helpMenuItems.quickstart'),
 				link: {
-					href: 'https://www.youtube.com/watch?v=1MwSoB0gnM4',
+					href: 'https://www.youtube.com/watch?v=4cQWJViybAQ',
 					target: '_blank',
 				},
 			},
@@ -163,16 +182,52 @@ const mainMenuItems = computed(() => [
 			},
 		],
 	},
+	{
+		id: 'whats-new',
+		icon: 'bell',
+		notification: showWhatsNewNotification.value,
+		label: i18n.baseText('mainSidebar.whatsNew'),
+		position: 'bottom',
+		available: versionsStore.hasVersionUpdates || versionsStore.whatsNewArticles.length > 0,
+		children: [
+			...versionsStore.whatsNewArticles.map(
+				(article) =>
+					({
+						id: `whats-new-article-${article.id}`,
+						label: article.title,
+						size: 'small',
+						customIconSize: 'small',
+						icon: {
+							type: 'emoji',
+							value: '•',
+							color: !versionsStore.isWhatsNewArticleRead(article.id) ? 'primary' : 'text-light',
+						},
+					}) satisfies IMenuItem,
+			),
+			{
+				id: 'full-changelog',
+				icon: 'external-link-alt',
+				label: i18n.baseText('mainSidebar.whatsNew.fullChangelog'),
+				link: {
+					href: RELEASE_NOTES_URL,
+					target: '_blank',
+				},
+				size: 'small',
+				customIconSize: 'small',
+			},
+			{
+				id: 'version-upgrade-cta',
+				component: VersionUpdateCTA,
+				available: versionsStore.hasVersionUpdates,
+				props: {},
+			},
+		],
+	},
 ]);
 const createBtn = ref<InstanceType<typeof N8nNavigationDropdown>>();
 
 const isCollapsed = computed(() => uiStore.sidebarMenuCollapsed);
 
-const hasVersionUpdates = computed(
-	() => settingsStore.settings.releaseChannel === 'stable' && versionsStore.hasVersionUpdates,
-);
-
-const nextVersions = computed(() => versionsStore.nextVersions);
 const showUserArea = computed(() => hasPermission(['authenticated']));
 const userIsTrialing = computed(() => cloudPlanStore.userIsTrialing);
 
@@ -197,7 +252,7 @@ onBeforeUnmount(() => {
 
 const trackTemplatesClick = () => {
 	telemetry.track('User clicked on templates', {
-		role: usersStore.currentUserCloudInfo?.role,
+		role: cloudPlanStore.currentUserCloudInfo?.role,
 		active_workflow_count: workflowsStore.activeWorkflows.length,
 	});
 };
@@ -238,10 +293,6 @@ const toggleCollapse = () => {
 	}
 };
 
-const openUpdatesPanel = () => {
-	uiStore.openModal(VERSIONS_MODAL_KEY);
-};
-
 const handleSelect = (key: string) => {
 	switch (key) {
 		case 'templates':
@@ -265,7 +316,23 @@ const handleSelect = (key: string) => {
 			trackHelpItemClick(key);
 			break;
 		}
+		case 'insights':
+			telemetry.track('User clicked insights link from side menu');
 		default:
+			if (key.startsWith('whats-new-article-')) {
+				const articleId = Number(key.replace('whats-new-article-', ''));
+
+				telemetry.track("User clicked on what's new section", {
+					article_id: articleId,
+				});
+				uiStore.openModalWithData({
+					name: WHATS_NEW_MODAL_KEY,
+					data: {
+						articleId,
+					},
+				});
+			}
+
 			break;
 	}
 };
@@ -294,6 +361,7 @@ const {
 	createCredentialsAppendSlotName,
 	projectsLimitReachedMessage,
 	upgradeLabel,
+	hasPermissionToCreateProjects,
 } = useGlobalEntityCreation();
 onClickOutside(createBtn as Ref<VueInstance>, () => {
 	createBtn.value?.close();
@@ -339,7 +407,12 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 							</template>
 						</i18n-t>
 					</template>
-					<N8nIcon icon="lock" size="xsmall" :class="$style.readOnlyEnvironmentIcon" />
+					<N8nIcon
+						data-test-id="read-only-env-icon"
+						icon="lock"
+						size="xsmall"
+						:class="$style.readOnlyEnvironmentIcon"
+					/>
 				</N8nTooltip>
 			</Logo>
 			<N8nNavigationDropdown
@@ -368,8 +441,26 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 					</N8nTooltip>
 				</template>
 				<template #[createProjectAppendSlotName]="{ item }">
-					<N8nTooltip v-if="item.disabled" placement="right" :content="projectsLimitReachedMessage">
+					<N8nTooltip
+						v-if="sourceControlStore.preferences.branchReadOnly"
+						placement="right"
+						:content="i18n.baseText('readOnlyEnv.cantAdd.project')"
+					>
+						<N8nIcon style="margin-left: auto; margin-right: 5px" icon="lock" size="xsmall" />
+					</N8nTooltip>
+					<N8nTooltip
+						v-else-if="item.disabled"
+						placement="right"
+						:content="projectsLimitReachedMessage"
+					>
+						<N8nIcon
+							v-if="!hasPermissionToCreateProjects"
+							style="margin-left: auto; margin-right: 5px"
+							icon="lock"
+							size="xsmall"
+						/>
 						<N8nButton
+							v-else
 							:size="'mini'"
 							style="margin-left: auto"
 							type="tertiary"
@@ -394,24 +485,6 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 			</template>
 			<template #menuSuffix>
 				<div>
-					<div
-						v-if="hasVersionUpdates"
-						data-test-id="version-updates-panel-button"
-						:class="$style.updates"
-						@click="openUpdatesPanel"
-					>
-						<div :class="$style.giftContainer">
-							<GiftNotificationIcon />
-						</div>
-						<N8nText
-							:class="{ ['ml-xs']: true, [$style.expanded]: fullyExpanded }"
-							color="text-base"
-						>
-							{{ nextVersions.length > 99 ? '99+' : nextVersions.length }} update{{
-								nextVersions.length > 1 ? 's' : ''
-							}}
-						</N8nText>
-					</div>
 					<MainSidebarSourceControl :is-collapsed="isCollapsed" />
 				</div>
 			</template>
@@ -462,19 +535,16 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 
 <style lang="scss" module>
 .sideMenu {
+	display: grid;
 	position: relative;
 	height: 100%;
+	grid-template-rows: auto 1fr auto;
 	border-right: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	transition: width 150ms ease-in-out;
 	width: $sidebar-expanded-width;
-	padding-top: 54px;
 	background-color: var(--menu-background, var(--color-background-xlight));
 
 	.logo {
-		position: absolute;
-		top: 0;
-		left: 0;
-		width: 100%;
 		display: flex;
 		align-items: center;
 		padding: var(--spacing-xs);
@@ -489,7 +559,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 
 	&.sideMenuCollapsed {
 		width: $sidebar-width;
-		padding-top: 100px;
+		min-width: auto;
 
 		.logo {
 			flex-direction: column;
@@ -589,6 +659,6 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	align-self: center;
 	padding: 2px;
 	border-radius: var(--border-radius-small);
-	margin: 5px 5px 0;
+	margin: 7px 12px 0 5px;
 }
 </style>

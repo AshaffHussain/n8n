@@ -1,17 +1,20 @@
 import type {
+	LoginRequestDto,
 	PasswordUpdateRequestDto,
 	SettingsUpdateRequestDto,
+	UsersList,
+	UsersListFilterDto,
 	UserUpdateRequestDto,
 } from '@n8n/api-types';
 import type {
 	CurrentUserResponse,
 	IPersonalizationLatestVersion,
-	IRestApiContext,
 	IUserResponse,
 	InvitableRoleName,
 } from '@/Interface';
+import type { IRestApiContext } from '@n8n/rest-api-client';
 import type { IDataObject, IUserSettings } from 'n8n-workflow';
-import { makeRestApiRequest } from '@/utils/apiUtils';
+import { makeRestApiRequest } from '@n8n/rest-api-client';
 
 export async function loginCurrentUser(
 	context: IRestApiContext,
@@ -21,7 +24,7 @@ export async function loginCurrentUser(
 
 export async function login(
 	context: IRestApiContext,
-	params: { email: string; password: string; mfaCode?: string; mfaRecoveryToken?: string },
+	params: LoginRequestDto,
 ): Promise<CurrentUserResponse> {
 	return await makeRestApiRequest(context, 'POST', '/login', params);
 }
@@ -125,8 +128,11 @@ export async function deleteUser(
 	await makeRestApiRequest(context, 'DELETE', `/users/${id}`, transferId ? { transferId } : {});
 }
 
-export async function getUsers(context: IRestApiContext): Promise<IUserResponse[]> {
-	return await makeRestApiRequest(context, 'GET', '/users');
+export async function getUsers(
+	context: IRestApiContext,
+	filter?: UsersListFilterDto,
+): Promise<UsersList> {
+	return await makeRestApiRequest(context, 'GET', '/users', filter);
 }
 
 export async function getInviteLink(

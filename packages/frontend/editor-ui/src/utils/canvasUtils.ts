@@ -1,10 +1,16 @@
-import type { IConnection, IConnections, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IConnection,
+	IConnections,
+	INodeTypeDescription,
+	NodeConnectionType,
+} from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { BoundingBox, CanvasConnection, CanvasConnectionPort } from '@/types';
 import { CanvasConnectionMode } from '@/types';
 import type { Connection } from '@vue-flow/core';
 import { isValidCanvasConnectionMode, isValidNodeConnectionType } from '@/utils/typeGuards';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import { NODE_MIN_INPUT_ITEMS_COUNT } from '@/constants';
 
 /**
  * Maps multiple legacy n8n connections to VueFlow connections
@@ -117,7 +123,7 @@ export function parseCanvasConnectionHandleString(handle: string | null | undefi
 	const [mode, type, index] = (handle ?? '').split('/');
 
 	const resolvedMode = isValidCanvasConnectionMode(mode) ? mode : CanvasConnectionMode.Output;
-	const resolvedType = isValidNodeConnectionType(type) ? type : NodeConnectionType.Main;
+	const resolvedType = isValidNodeConnectionType(type) ? type : NodeConnectionTypes.Main;
 	let resolvedIndex = parseInt(index, 10);
 	if (isNaN(resolvedIndex)) {
 		resolvedIndex = 0;
@@ -135,7 +141,7 @@ export function parseCanvasConnectionHandleString(handle: string | null | undefi
  */
 export function createCanvasConnectionHandleString({
 	mode,
-	type = NodeConnectionType.Main,
+	type = NodeConnectionTypes.Main,
 	index = 0,
 }: {
 	mode: 'inputs' | 'outputs';
@@ -200,7 +206,7 @@ export function mapLegacyEndpointsToCanvasConnectionPort(
 
 	return endpoints.map((endpoint, endpointIndex) => {
 		const typeValue = typeof endpoint === 'string' ? endpoint : endpoint.type;
-		const type = isValidNodeConnectionType(typeValue) ? typeValue : NodeConnectionType.Main;
+		const type = isValidNodeConnectionType(typeValue) ? typeValue : NodeConnectionTypes.Main;
 		const label =
 			typeof endpoint === 'string' ? endpointNames[endpointIndex] : endpoint.displayName;
 		const index =
@@ -241,18 +247,15 @@ export function checkOverlap(node1: BoundingBox, node2: BoundingBox) {
 /**
  * Inserts spacers between endpoints to visually separate them
  */
-export function insertSpacersBetweenEndpoints<T>(
-	endpoints: T[],
-	requiredEndpointsCount = 0,
-	minEndpointsCount = 4,
-) {
+export function insertSpacersBetweenEndpoints<T>(endpoints: T[], requiredEndpointsCount = 0) {
 	const endpointsWithSpacers: Array<T | null> = [...endpoints];
 	const optionalNonMainInputsCount = endpointsWithSpacers.length - requiredEndpointsCount;
-	const spacerCount = minEndpointsCount - requiredEndpointsCount - optionalNonMainInputsCount;
+	const spacerCount =
+		NODE_MIN_INPUT_ITEMS_COUNT - requiredEndpointsCount - optionalNonMainInputsCount;
 
 	// Insert `null` in between required non-main inputs and non-required non-main inputs
-	// to separate them visually if there are less than 4 inputs in total
-	if (endpointsWithSpacers.length < minEndpointsCount) {
+	// to separate them visually if there are less than `minEndpointsCount` inputs in total
+	if (endpointsWithSpacers.length < NODE_MIN_INPUT_ITEMS_COUNT) {
 		for (let i = 0; i < spacerCount; i++) {
 			endpointsWithSpacers.splice(requiredEndpointsCount + i, 0, null);
 		}

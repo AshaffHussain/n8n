@@ -8,11 +8,11 @@ import {
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { computed } from 'vue';
 
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 
@@ -119,7 +119,7 @@ const options = computed<ITab[]>(() => {
 	return options;
 });
 
-function onTabSelect(tab: string) {
+function onTabSelect(tab: string | number) {
 	if (tab === 'docs' && props.nodeType) {
 		void externalHooks.run('dataDisplay.onDocumentationUrlClick', {
 			nodeType: props.nodeType,
@@ -130,7 +130,7 @@ function onTabSelect(tab: string) {
 			node_type: activeNode.value?.type,
 			workflow_id: workflowsStore.workflowId,
 			push_ref: props.pushRef,
-			pane: NodeConnectionType.Main,
+			pane: NodeConnectionTypes.Main,
 			type: 'docs',
 		});
 	}
@@ -147,7 +147,7 @@ function onTabSelect(tab: string) {
 	}
 }
 
-function onTooltipClick(tab: string, event: MouseEvent) {
+function onTooltipClick(tab: string | number, event: MouseEvent) {
 	if (tab === 'communityNode' && (event.target as Element).localName === 'a') {
 		telemetry.track('user clicked cnr docs link', { source: 'node details view' });
 	}

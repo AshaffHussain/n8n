@@ -1,17 +1,17 @@
-import { STORES } from '@/constants';
+import { STORES } from '@n8n/stores';
 import { defineStore } from 'pinia';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
-import * as publicApiApi from '@/api/api-keys';
+import * as publicApiApi from '@n8n/rest-api-client/api/api-keys';
 import { computed, ref } from 'vue';
-import { useSettingsStore } from './settings.store';
 import type { ApiKey, CreateApiKeyRequestDto, UpdateApiKeyRequestDto } from '@n8n/api-types';
+import type { ApiKeyScope } from '@n8n/permissions';
 
 export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 	const apiKeys = ref<ApiKey[]>([]);
+	const availableScopes = ref<ApiKeyScope[]>([]);
 
 	const rootStore = useRootStore();
-	const settingsStore = useSettingsStore();
 
 	const apiKeysSortByCreationDate = computed(() =>
 		apiKeys.value.sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
@@ -27,9 +27,10 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		);
 	});
 
-	const canAddMoreApiKeys = computed(
-		() => apiKeys.value.length < settingsStore.api.apiKeysPerUserLimit,
-	);
+	const getApiKeyAvailableScopes = async () => {
+		availableScopes.value = await publicApiApi.getApiKeyScopes(rootStore.restApiContext);
+		return availableScopes.value;
+	};
 
 	const getAndCacheApiKeys = async () => {
 		if (apiKeys.value.length) return apiKeys.value;
@@ -52,6 +53,7 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 	const updateApiKey = async (id: string, payload: UpdateApiKeyRequestDto) => {
 		await publicApiApi.updateApiKey(rootStore.restApiContext, id, payload);
 		apiKeysById.value[id].label = payload.label;
+		apiKeysById.value[id].scopes = payload.scopes;
 	};
 
 	return {
@@ -59,9 +61,10 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		createApiKey,
 		deleteApiKey,
 		updateApiKey,
+		getApiKeyAvailableScopes,
 		apiKeysSortByCreationDate,
 		apiKeysById,
 		apiKeys,
-		canAddMoreApiKeys,
+		availableScopes,
 	};
 });

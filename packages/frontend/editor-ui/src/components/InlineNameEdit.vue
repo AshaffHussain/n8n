@@ -1,18 +1,19 @@
 <script setup lang="ts">
-import { nextTick, ref, withDefaults } from 'vue';
+import { nextTick, ref } from 'vue';
 import { useToast } from '@/composables/useToast';
 import { onClickOutside } from '@vueuse/core';
+import type { InputType } from '@n8n/design-system';
 
 interface Props {
 	modelValue: string;
 	subtitle?: string;
-	type: string;
+	type: InputType;
 	readonly?: boolean;
 	placeholder?: string;
 	maxlength?: number;
 	required?: boolean;
 	autosize?: boolean | { minRows: number; maxRows: number };
-	inputType?: string;
+	inputType?: InputType;
 	maxHeight?: string;
 }
 const props = withDefaults(defineProps<Props>(), {
@@ -118,7 +119,7 @@ onClickOutside(nameInput, disableNameEdit);
 	position: relative;
 	min-height: 22px;
 	max-height: v-bind(maxHeight);
-	font-weight: 400;
+	font-weight: var(--font-weight-regular);
 
 	&.editing {
 		width: 100%;
@@ -158,6 +159,6 @@ onClickOutside(nameInput, disableNameEdit);
 	font-size: var(--font-size-2xs);
 	color: var(--color-text-light);
 	margin-left: 4px;
-	font-weight: 400;
+	font-weight: var(--font-weight-regular);
 }
 </style>

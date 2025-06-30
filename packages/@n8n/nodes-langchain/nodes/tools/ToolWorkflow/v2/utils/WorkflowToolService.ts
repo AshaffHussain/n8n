@@ -1,6 +1,6 @@
 import type { CallbackManagerForToolRun } from '@langchain/core/callbacks/manager';
 import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
-import get from 'lodash/get';
+import isArray from 'lodash/isArray';
 import isObject from 'lodash/isObject';
 import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
 import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
@@ -22,12 +22,17 @@ import type {
 import {
 	generateZodSchema,
 	jsonParse,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	NodeOperationError,
 	parseErrorMetadata,
+	sleepWithAbort,
 	traverseNodeParameters,
 } from 'n8n-workflow';
 import { z } from 'zod';
+
+function isNodeExecutionData(data: unknown): data is INodeExecutionData[] {
+	return isArray(data) && Boolean(data.length) && isObject(data[0]) && 'json' in data[0];
+}
 
 /**
 	Main class for creating the Workflow tool
@@ -43,76 +48,144 @@ export class WorkflowToolService {
 	// Sub-workflow execution id, will be set after the sub-workflow is executed
 	private subExecutionId: string | undefined;
 
-	constructor(private baseContext: ISupplyDataFunctions) {
+	private returnAllItems: boolean = false;
+
+	constructor(
+		private baseContext: ISupplyDataFunctions,
+		options?: { returnAllItems: boolean },
+	) {
 		const subWorkflowInputs = this.baseContext.getNode().parameters
 			.workflowInputs as ResourceMapperValue;
 		this.useSchema = (subWorkflowInputs?.schema ?? []).length > 0;
+		this.returnAllItems = options?.returnAllItems ?? false;
 	}
 
 	// Creates the tool based on the provided parameters
 	async createTool({
+		ctx,
 		name,
 		description,
 		itemIndex,
 	}: {
+		ctx: ISupplyDataFunctions;
 		name: string;
 		description: string;
 		itemIndex: number;
 	}): Promise<DynamicTool | DynamicStructuredTool> {
-		let runIndex = 0;
 		// Handler for the tool execution, will be called when the tool is executed
 		// This function will execute the sub-workflow and return the response
+		// We get the runIndex from the context to handle multiple executions
+		// of the same tool when the tool is used in a loop or in a parallel execution.
+		const node = ctx.getNode();
+
+		let runIndex: number = ctx.getNextRunIndex();
 		const toolHandler = async (
 			query: string | IDataObject,
 			runManager?: CallbackManagerForToolRun,
-		): Promise<string> => {
-			const localRunIndex = runIndex++;
-			// We need to clone the context here to handle runIndex correctly
-			// Otherwise the runIndex will be shared between different executions
-			// Causing incorrect data to be passed to the sub-workflow and via $fromAI
-			const context = this.baseContext.cloneWith({
-				runIndex: localRunIndex,
-				inputData: [[{ json: { query } }]],
-			});
-			try {
-				const response = await this.runFunction(context, query, itemIndex, runManager);
-				const processedResponse = this.handleToolResponse(response);
-
-				// Once the sub-workflow is executed, add the output data to the context
-				// This will be used to link the sub-workflow execution in the parent workflow
-				let metadata: ITaskMetadata | undefined;
-				if (this.subExecutionId && this.subWorkflowId) {
-					metadata = {
-						subExecution: {
-							executionId: this.subExecutionId,
-							workflowId: this.subWorkflowId,
-						},
-					};
-				}
-				const json = jsonParse<IDataObject>(processedResponse, {
-					fallbackValue: { response: processedResponse },
-				});
-				void context.addOutputData(
-					NodeConnectionType.AiTool,
-					localRunIndex,
-					[[{ json }]],
-					metadata,
-				);
-
-				return processedResponse;
-			} catch (error) {
-				const executionError = error as ExecutionError;
-				const errorResponse = `There was an error: "${executionError.message}"`;
-
-				const metadata = parseErrorMetadata(error);
-				void context.addOutputData(
-					NodeConnectionType.AiTool,
-					localRunIndex,
-					executionError,
-					metadata,
-				);
-				return errorResponse;
+		): Promise<IDataObject | IDataObject[] | string> => {
+			let maxTries = 1;
+			if (node.retryOnFail === true) {
+				maxTries = Math.min(5, Math.max(2, node.maxTries ?? 3));
 			}
+
+			let waitBetweenTries = 0;
+			if (node.retryOnFail === true) {
+				waitBetweenTries = Math.min(5000, Math.max(0, node.waitBetweenTries ?? 1000));
+			}
+
+			let lastError: ExecutionError | undefined;
+
+			for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
+				const localRunIndex = runIndex++;
+				// We need to clone the context here to handle runIndex correctly
+				// Otherwise the runIndex will be shared between different executions
+				// Causing incorrect data to be passed to the sub-workflow and via $fromAI
+				const context = this.baseContext.cloneWith({
+					runIndex: localRunIndex,
+					inputData: [[{ json: { query } }]],
+				});
+
+				// Get abort signal from context for cancellation support
+				const abortSignal = context.getExecutionCancelSignal?.();
+
+				// Check if execution was cancelled before retry
+				if (abortSignal?.aborted) {
+					return 'There was an error: "Execution was cancelled"';
+				}
+
+				if (tryIndex !== 0) {
+					// Reset error from previous attempt
+					lastError = undefined;
+					if (waitBetweenTries !== 0) {
+						try {
+							await sleepWithAbort(waitBetweenTries, abortSignal);
+						} catch (abortError) {
+							return 'There was an error: "Execution was cancelled"';
+						}
+					}
+				}
+
+				try {
+					const response = await this.runFunction(context, query, itemIndex, runManager);
+
+					const processedResponse = this.handleToolResponse(response);
+
+					let responseData: INodeExecutionData[];
+					if (isNodeExecutionData(response)) {
+						responseData = response;
+					} else {
+						const reParsedData = jsonParse<IDataObject>(processedResponse, {
+							fallbackValue: { response: processedResponse },
+						});
+
+						responseData = [{ json: reParsedData }];
+					}
+
+					// Once the sub-workflow is executed, add the output data to the context
+					// This will be used to link the sub-workflow execution in the parent workflow
+					let metadata: ITaskMetadata | undefined;
+					if (this.subExecutionId && this.subWorkflowId) {
+						metadata = {
+							subExecution: {
+								executionId: this.subExecutionId,
+								workflowId: this.subWorkflowId,
+							},
+						};
+					}
+
+					void context.addOutputData(
+						NodeConnectionTypes.AiTool,
+						localRunIndex,
+						[responseData],
+						metadata,
+					);
+
+					return processedResponse;
+				} catch (error) {
+					// Check if error is due to cancellation
+					if (abortSignal?.aborted) {
+						return 'There was an error: "Execution was cancelled"';
+					}
+
+					const executionError = error as ExecutionError;
+					lastError = executionError;
+					const errorResponse = `There was an error: "${executionError.message}"`;
+
+					const metadata = parseErrorMetadata(error);
+					void context.addOutputData(
+						NodeConnectionTypes.AiTool,
+						localRunIndex,
+						executionError,
+						metadata,
+					);
+
+					if (tryIndex === maxTries - 1) {
+						return errorResponse;
+					}
+				}
+			}
+
+			return `There was an error: ${lastError?.message ?? 'Unknown error'}`;
 		};
 
 		// Create structured tool if input schema is provided
@@ -124,6 +197,14 @@ export class WorkflowToolService {
 	private handleToolResponse(response: unknown): string {
 		if (typeof response === 'number') {
 			return response.toString();
+		}
+
+		if (isNodeExecutionData(response)) {
+			return JSON.stringify(
+				response.map((item) => item.json),
+				null,
+				2,
+			);
 		}
 
 		if (isObject(response)) {
@@ -148,7 +229,7 @@ export class WorkflowToolService {
 		items: INodeExecutionData[],
 		workflowProxy: IWorkflowDataProxyData,
 		runManager?: CallbackManagerForToolRun,
-	): Promise<{ response: string; subExecutionId: string }> {
+	): Promise<{ response: string | IDataObject | INodeExecutionData[]; subExecutionId: string }> {
 		let receivedData: ExecuteWorkflowData;
 		try {
 			receivedData = await context.executeWorkflow(workflowInfo, items, runManager?.getChild(), {
@@ -163,7 +244,12 @@ export class WorkflowToolService {
 			throw new NodeOperationError(context.getNode(), error as Error);
 		}
 
-		const response: string | undefined = get(receivedData, 'data[0][0].json') as string | undefined;
+		let response: IDataObject | INodeExecutionData[] | undefined;
+		if (this.returnAllItems) {
+			response = receivedData?.data?.[0]?.length ? receivedData.data[0] : undefined;
+		} else {
+			response = receivedData?.data?.[0]?.[0]?.json;
+		}
 		if (response === undefined) {
 			throw new NodeOperationError(
 				context.getNode(),
@@ -183,7 +269,7 @@ export class WorkflowToolService {
 		query: string | IDataObject,
 		itemIndex: number,
 		runManager?: CallbackManagerForToolRun,
-	): Promise<string> {
+	): Promise<string | IDataObject | INodeExecutionData[]> {
 		const source = context.getNodeParameter('source', itemIndex) as string;
 		const workflowProxy = context.getWorkflowDataProxy(0);
 
@@ -304,7 +390,10 @@ export class WorkflowToolService {
 	private async createStructuredTool(
 		name: string,
 		description: string,
-		func: (query: string | IDataObject, runManager?: CallbackManagerForToolRun) => Promise<string>,
+		func: (
+			query: string | IDataObject,
+			runManager?: CallbackManagerForToolRun,
+		) => Promise<string | IDataObject | IDataObject[]>,
 	): Promise<DynamicStructuredTool | DynamicTool> {
 		const collectedArguments = await this.extractFromAIParameters();
 

@@ -13,31 +13,36 @@ import { LanguageSupport } from '@codemirror/language';
 import { Text, type Extension } from '@codemirror/state';
 import { EditorView, hoverTooltip } from '@codemirror/view';
 import * as Comlink from 'comlink';
-import { NodeConnectionType, type CodeExecutionMode, type INodeExecutionData } from 'n8n-workflow';
-import { ref, toRef, toValue, watch, type MaybeRefOrGetter } from 'vue';
+import { NodeConnectionTypes, type CodeExecutionMode, type INodeExecutionData } from 'n8n-workflow';
+import { onBeforeUnmount, ref, toRef, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import type { LanguageServiceWorker, RemoteLanguageServiceWorkerInit } from '../types';
 import { typescriptCompletionSource } from './completions';
 import { typescriptWorkerFacet } from './facet';
 import { typescriptHoverTooltips } from './hoverTooltip';
 import { linter } from '@codemirror/lint';
 import { typescriptLintSource } from './linter';
+import type { TargetNodeParameterContext } from '@/Interface';
+import { TARGET_NODE_PARAMETER_FACET } from '../../completions/constants';
 
 export function useTypescript(
 	view: MaybeRefOrGetter<EditorView | undefined>,
 	mode: MaybeRefOrGetter<CodeExecutionMode>,
 	id: MaybeRefOrGetter<string>,
+	targetNodeParameterContext?: MaybeRefOrGetter<TargetNodeParameterContext>,
 ) {
 	const { getInputDataWithPinned, getSchemaForExecutionData } = useDataSchema();
 	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
 	const { debounce } = useDebounce();
-	const activeNodeName = ndvStore.activeNodeName;
+	const activeNodeName = toValue(targetNodeParameterContext)?.nodeName ?? ndvStore.activeNodeName;
 	const worker = ref<Comlink.Remote<LanguageServiceWorker>>();
+	const webWorker = ref<Worker>();
 
 	async function createWorker(): Promise<Extension> {
-		const { init } = Comlink.wrap<RemoteLanguageServiceWorkerInit>(
-			new Worker(new URL('../worker/typescript.worker.ts', import.meta.url), { type: 'module' }),
-		);
+		webWorker.value = new Worker(new URL('../worker/typescript.worker.ts', import.meta.url), {
+			type: 'module',
+		});
+		const { init } = Comlink.wrap<RemoteLanguageServiceWorkerInit>(webWorker.value);
 		worker.value = await init(
 			{
 				id: toValue(id),
@@ -47,7 +52,7 @@ export function useTypescript(
 				inputNodeNames: activeNodeName
 					? workflowsStore
 							.getCurrentWorkflow()
-							.getParentNodes(activeNodeName, NodeConnectionType.Main, 1)
+							.getParentNodes(activeNodeName, NodeConnectionTypes.Main, 1)
 					: [],
 				mode: toValue(mode),
 			},
@@ -62,7 +67,9 @@ export function useTypescript(
 						.getBinaryData(
 							execution?.data?.resultData?.runData ?? null,
 							node.name,
-							ndvStore.ndvInputRunIndex ?? 0,
+							toValue(targetNodeParameterContext) === undefined
+								? (ndvStore.ndvInputRunIndex ?? 0)
+								: 0,
 							0,
 						)
 						.filter((data) => Boolean(data && Object.keys(data).length));
@@ -86,6 +93,7 @@ export function useTypescript(
 
 		return [
 			typescriptWorkerFacet.of({ worker: worker.value }),
+			TARGET_NODE_PARAMETER_FACET.of(toValue(targetNodeParameterContext)),
 			new LanguageSupport(javascriptLanguage, [
 				javascriptLanguage.data.of({ autocomplete: typescriptCompletionSource }),
 			]),
@@ -123,6 +131,10 @@ export function useTypescript(
 
 		await worker.value.updateMode(newMode);
 		forceParse(editor);
+	});
+
+	onBeforeUnmount(() => {
+		if (webWorker.value) webWorker.value.terminate();
 	});
 
 	return {

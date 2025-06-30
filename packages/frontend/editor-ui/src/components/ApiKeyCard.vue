@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref } from 'vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type { ApiKey } from '@n8n/api-types';
 import { DateTime } from 'luxon';
 
@@ -60,9 +60,9 @@ const getExpirationTime = (apiKey: ApiKey): string => {
 	<n8n-card :class="$style.cardLink" data-test-id="api-key-card" @click="onAction('edit')">
 		<template #header>
 			<div>
-				<n8n-heading tag="h2" bold :class="$style.cardHeading">
+				<n8n-text tag="h2" bold :class="$style.cardHeading">
 					{{ apiKey.label }}
-				</n8n-heading>
+				</n8n-text>
 				<div :class="[$style.cardDescription]">
 					<n8n-text :color="!hasApiKeyExpired(apiKey) ? 'text-light' : 'warning'" size="small">
 						<span>{{ getExpirationTime(apiKey) }}</span>
@@ -76,7 +76,7 @@ const getExpirationTime = (apiKey: ApiKey): string => {
 
 		<template #append>
 			<div ref="cardActions" :class="$style.cardActions">
-				<n8n-action-toggle :actions="ACTION_LIST" theme="dark" @action="onAction" />
+				<N8nActionToggle :actions="ACTION_LIST" theme="dark" @action="onAction" />
 			</div>
 		</template>
 	</n8n-card>

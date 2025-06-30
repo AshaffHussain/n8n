@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { i18n } from '@/plugins/i18n';
+import { i18n } from '@n8n/i18n';
 
 defineProps<{
 	isReadOnly?: boolean;
@@ -13,7 +13,7 @@ const emit = defineEmits<{
 <template>
 	<div :class="$style.contentOverrideContainer" data-test-id="fromAI-override-field">
 		<div :class="[$style.iconStars, 'el-input-group__prepend', $style.noCornersRight]">
-			<AiStarsIcon :class="$style.aiStarsIcon" />
+			<AiStarsIcon />
 		</div>
 		<div :class="$style.overrideInput">
 			<N8nText
@@ -26,9 +26,9 @@ const emit = defineEmits<{
 			v-if="!isReadOnly"
 			type="tertiary"
 			:class="['n8n-input', $style.overrideCloseButton]"
-			outline="false"
+			:outline="false"
 			icon="xmark"
-			size="xsmall"
+			size="mini"
 			@click="emit('close')"
 		/>
 	</div>

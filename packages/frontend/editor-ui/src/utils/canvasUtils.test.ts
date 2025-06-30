@@ -9,12 +9,13 @@ import {
 	parseCanvasConnectionHandleString,
 } from '@/utils/canvasUtils';
 import type { IConnection, IConnections, INodeTypeDescription } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import type { CanvasConnection } from '@/types';
 import { CanvasConnectionMode } from '@/types';
 import type { INodeUi } from '@/Interface';
 import type { Connection } from '@vue-flow/core';
 import { createTestNode } from '@/__tests__/mocks';
+import { NODE_MIN_INPUT_ITEMS_COUNT } from '@/constants';
 
 vi.mock('uuid', () => ({
 	v4: vi.fn(() => 'mock-uuid'),
@@ -24,7 +25,9 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 	it('should map legacy connections to canvas connections', () => {
 		const legacyConnections: IConnections = {
 			'Node A': {
-				[NodeConnectionType.Main]: [[{ node: 'Node B', type: NodeConnectionType.Main, index: 0 }]],
+				[NodeConnectionTypes.Main]: [
+					[{ node: 'Node B', type: NodeConnectionTypes.Main, index: 0 }],
+				],
 			},
 		};
 		const nodes: INodeUi[] = [
@@ -54,13 +57,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 		const source = nodes[0].id;
 		const sourceHandle = createCanvasConnectionHandleString({
 			mode: CanvasConnectionMode.Output,
-			type: NodeConnectionType.Main,
+			type: NodeConnectionTypes.Main,
 			index: 0,
 		});
 		const target = nodes[1].id;
 		const targetHandle = createCanvasConnectionHandleString({
 			mode: CanvasConnectionMode.Input,
-			type: NodeConnectionType.Main,
+			type: NodeConnectionTypes.Main,
 			index: 0,
 		});
 		const id = createCanvasConnectionId({
@@ -81,12 +84,12 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 					source: {
 						node: nodes[0].name,
 						index: 0,
-						type: NodeConnectionType.Main,
+						type: NodeConnectionTypes.Main,
 					},
 					target: {
 						node: nodes[1].name,
 						index: 0,
-						type: NodeConnectionType.Main,
+						type: NodeConnectionTypes.Main,
 					},
 				},
 			},
@@ -96,7 +99,9 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 	it('should return empty array when no matching nodes found', () => {
 		const legacyConnections: IConnections = {
 			'Node A': {
-				[NodeConnectionType.Main]: [[{ node: 'Node B', type: NodeConnectionType.Main, index: 0 }]],
+				[NodeConnectionTypes.Main]: [
+					[{ node: 'Node B', type: NodeConnectionTypes.Main, index: 0 }],
+				],
 			},
 		};
 		const nodes: INodeUi[] = [];
@@ -141,9 +146,9 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 	it('should map multiple connections between the same nodes', () => {
 		const legacyConnections: IConnections = {
 			'Node A': {
-				[NodeConnectionType.Main]: [
-					[{ node: 'Node B', type: NodeConnectionType.Main, index: 0 }],
-					[{ node: 'Node B', type: NodeConnectionType.Main, index: 1 }],
+				[NodeConnectionTypes.Main]: [
+					[{ node: 'Node B', type: NodeConnectionTypes.Main, index: 0 }],
+					[{ node: 'Node B', type: NodeConnectionTypes.Main, index: 1 }],
 				],
 			},
 		};
@@ -174,13 +179,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 		const sourceA = nodes[0].id;
 		const sourceHandleA = createCanvasConnectionHandleString({
 			mode: CanvasConnectionMode.Output,
-			type: NodeConnectionType.Main,
+			type: NodeConnectionTypes.Main,
 			index: 0,
 		});
 		const targetA = nodes[1].id;
 		const targetHandleA = createCanvasConnectionHandleString({
 			mode: CanvasConnectionMode.Input,
-			type: NodeConnectionType.Main,
+			type: NodeConnectionTypes.Main,
 			index: 0,
 		});
 		const connectionIdA = createCanvasConnectionId({
@@ -193,13 +198,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 		const sourceB = nodes[0].id;
 		const sourceHandleB = createCanvasConnectionHandleString({
 			mode: CanvasConnectionMode.Output,
-			type: NodeConnectionType.Main,
+			type: NodeConnectionTypes.Main,
 			index: 1,
 		});
 		const targetB = nodes[1].id;
 		const targetHandleB = createCanvasConnectionHandleString({
 			mode: CanvasConnectionMode.Input,
-			type: NodeConnectionType.Main,
+			type: NodeConnectionTypes.Main,
 			index: 1,
 		});
 		const connectionIdB = createCanvasConnectionId({
@@ -220,12 +225,12 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 					source: {
 						node: nodes[0].name,
 						index: 0,
-						type: NodeConnectionType.Main,
+						type: NodeConnectionTypes.Main,
 					},
 					target: {
 						node: nodes[1].name,
 						index: 0,
-						type: NodeConnectionType.Main,
+						type: NodeConnectionTypes.Main,
 					},
 				},
 			},
@@ -239,12 +244,12 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 					source: {
 						node: nodes[0].name,
 						index: 1,
-						type: NodeConnectionType.Main,
+						type: NodeConnectionTypes.Main,
 					},
 					target: {
 						node: nodes[1].name,
 						index: 1,
-						type: NodeConnectionType.Main,
+						type: NodeConnectionTypes.Main,
 					},
 				},
 			},
@@ -254,9 +259,9 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 	it('should map multiple connections from one node to different nodes', () => {
 		const legacyConnections: IConnections = {
 			'Node A': {
-				[NodeConnectionType.Main]: [
-					[{ node: 'Node B', type: NodeConnectionType.Main, index: 0 }],
-					[{ node: 'Node C', type: NodeConnectionType.Main, index: 0 }],
+				[NodeConnectionTypes.Main]: [
+					[{ node: 'Node B', type: NodeConnectionTypes.Main, index: 0 }],
+					[{ node: 'Node C', type: NodeConnectionTypes.Main, index: 0 }],
 				],
 			},
 		};
@@ -295,13 +300,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 		const sourceA = nodes[0].id;
 		const sourceHandleA = createCanvasConnectionHandleString({
 			mode: CanvasConnectionMode.Output,
-			type: NodeConnectionType.Main,
+			type: NodeConnectionTypes.Main,
 			index: 0,
 		});
 		const targetA = nodes[1].id;
 		const targetHandleA = createCanvasConnectionHandleString({
 			mode: CanvasConnectionMode.Input,
-			type: NodeConnectionType.Main,
+			type: NodeConnectionTypes.Main,
 			index: 0,
 		});
 		const connectionIdA = createCanvasConnectionId({
@@ -314,13 +319,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 		const sourceB = nodes[0].id;
 		const sourceHandleB = createCanvasConnectionHandleString({
 			mode: CanvasConnectionMode.Output,
-			type: NodeConnectionType.Main,
+			type: NodeConnectionTypes.Main,
 			index: 1,
 		});
 		const targetB = nodes[2].id;
 		const targetHandleB = createCanvasConnectionHandleString({
 			mode: CanvasConnectionMode.Input,
-			type: NodeConnectionType.Main,
+			type: NodeConnectionTypes.Main,
 			index: 0,
 		});
 		const connectionIdB = createCanvasConnectionId({
@@ -341,12 +346,12 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 					source: {
 						node: nodes[0].name,
 						index: 0,
-						type: NodeConnectionType.Main,
+						type: NodeConnectionTypes.Main,
 					},
 					target: {
 						node: nodes[1].name,
 						index: 0,
-						type: NodeConnectionType.Main,
+						type: NodeConnectionTypes.Main,
 					},
 				},
 			},
@@ -360,12 +365,12 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 					source: {
 						node: nodes[0].name,
 						index: 1,
-						type: NodeConnectionType.Main,
+						type: NodeConnectionTypes.Main,
 					},
 					target: {
 						node: nodes[2].name,
 						index: 0,
-						type: NodeConnectionType.Main,
+						type: NodeConnectionTypes.Main,
 					},
 				},
 			},
@@ -375,13 +380,17 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 	it('should map complex node setup with mixed inputs and outputs', () => {
 		const legacyConnections: IConnections = {
 			'Node A': {
-				[NodeConnectionType.Main]: [[{ node: 'Node B', type: NodeConnectionType.Main, index: 0 }]],
-				[NodeConnectionType.AiMemory]: [
-					[{ node: 'Node C', type: NodeConnectionType.AiMemory, index: 1 }],
+				[NodeConnectionTypes.Main]: [
+					[{ node: 'Node B', type: NodeConnectionTypes.Main, index: 0 }],
+				],
+				[NodeConnectionTypes.AiMemory]: [
+					[{ node: 'Node C', type: NodeConnectionTypes.AiMemory, index: 1 }],
 				],
 			},
 			'Node B': {
-				[NodeConnectionType.Main]: [[{ node: 'Node C', type: NodeConnectionType.Main, index: 0 }]],
+				[NodeConnectionTypes.Main]: [
+					[{ node: 'Node C', type: NodeConnectionTypes.Main, index: 0 }],
+				],
 			},
 		};
 		const nodes: INodeUi[] = [
@@ -419,13 +428,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 		const sourceA = nodes[0].id;
 		const sourceHandleA = createCanvasConnectionHandleString({
 			mode: CanvasConnectionMode.Output,
-			type: NodeConnectionType.Main,
+			type: NodeConnectionTypes.Main,
 			index: 0,
 		});
 		const targetA = nodes[1].id;
 		const targetHandleA = createCanvasConnectionHandleString({
 			mode: CanvasConnectionMode.Input,
-			type: NodeConnectionType.Main,
+			type: NodeConnectionTypes.Main,
 			index: 0,
 		});
 		const connectionIdA = createCanvasConnectionId({
@@ -438,13 +447,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 		const sourceB = nodes[0].id;
 		const sourceHandleB = createCanvasConnectionHandleString({
 			mode: CanvasConnectionMode.Output,
-			type: NodeConnectionType.AiMemory,
+			type: NodeConnectionTypes.AiMemory,
 			index: 0,
 		});
 		const targetB = nodes[2].id;
 		const targetHandleB = createCanvasConnectionHandleString({
 			mode: CanvasConnectionMode.Input,
-			type: NodeConnectionType.AiMemory,
+			type: NodeConnectionTypes.AiMemory,
 			index: 1,
 		});
 		const connectionIdB = createCanvasConnectionId({
@@ -457,13 +466,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 		const sourceC = nodes[1].id;
 		const sourceHandleC = createCanvasConnectionHandleString({
 			mode: CanvasConnectionMode.Output,
-			type: NodeConnectionType.Main,
+			type: NodeConnectionTypes.Main,
 			index: 0,
 		});
 		const targetC = nodes[2].id;
 		const targetHandleC = createCanvasConnectionHandleString({
 			mode: CanvasConnectionMode.Input,
-			type: NodeConnectionType.Main,
+			type: NodeConnectionTypes.Main,
 			index: 0,
 		});
 		const connectionIdC = createCanvasConnectionId({
@@ -484,12 +493,12 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 					source: {
 						node: nodes[0].name,
 						index: 0,
-						type: NodeConnectionType.Main,
+						type: NodeConnectionTypes.Main,
 					},
 					target: {
 						node: nodes[1].name,
 						index: 0,
-						type: NodeConnectionType.Main,
+						type: NodeConnectionTypes.Main,
 					},
 				},
 			},
@@ -503,12 +512,12 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 					source: {
 						node: nodes[0].name,
 						index: 0,
-						type: NodeConnectionType.AiMemory,
+						type: NodeConnectionTypes.AiMemory,
 					},
 					target: {
 						node: nodes[2].name,
 						index: 1,
-						type: NodeConnectionType.AiMemory,
+						type: NodeConnectionTypes.AiMemory,
 					},
 				},
 			},
@@ -522,12 +531,12 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 					source: {
 						node: nodes[1].name,
 						index: 0,
-						type: NodeConnectionType.Main,
+						type: NodeConnectionTypes.Main,
 					},
 					target: {
 						node: nodes[2].name,
 						index: 0,
-						type: NodeConnectionType.Main,
+						type: NodeConnectionTypes.Main,
 					},
 				},
 			},
@@ -537,9 +546,9 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 	it('should handle edge cases with invalid data gracefully', () => {
 		const legacyConnections: IConnections = {
 			'Node A': {
-				[NodeConnectionType.Main]: [
-					[{ node: 'Nonexistent Node', type: NodeConnectionType.Main, index: 0 }],
-					[{ node: 'Node B', type: NodeConnectionType.Main, index: 0 }],
+				[NodeConnectionTypes.Main]: [
+					[{ node: 'Nonexistent Node', type: NodeConnectionTypes.Main, index: 0 }],
+					[{ node: 'Node B', type: NodeConnectionTypes.Main, index: 0 }],
 				],
 			},
 		};
@@ -570,14 +579,14 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 		const source = nodes[0].id;
 		const sourceHandle = createCanvasConnectionHandleString({
 			mode: CanvasConnectionMode.Output,
-			type: NodeConnectionType.Main,
+			type: NodeConnectionTypes.Main,
 			index: 1,
 		});
 
 		const target = nodes[1].id;
 		const targetHandle = createCanvasConnectionHandleString({
 			mode: CanvasConnectionMode.Input,
-			type: NodeConnectionType.Main,
+			type: NodeConnectionTypes.Main,
 			index: 0,
 		});
 
@@ -599,12 +608,12 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 					source: {
 						node: nodes[0].name,
 						index: 1,
-						type: NodeConnectionType.Main,
+						type: NodeConnectionTypes.Main,
 					},
 					target: {
 						node: nodes[1].name,
 						index: 0,
-						type: NodeConnectionType.Main,
+						type: NodeConnectionTypes.Main,
 					},
 				},
 			},
@@ -615,9 +624,9 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 	it('should handle null connections gracefully', () => {
 		const legacyConnections: IConnections = {
 			'Node A': {
-				[NodeConnectionType.Main]: [
+				[NodeConnectionTypes.Main]: [
 					null as unknown as IConnection[],
-					[{ node: 'Node B', type: NodeConnectionType.Main, index: 0 }],
+					[{ node: 'Node B', type: NodeConnectionTypes.Main, index: 0 }],
 				],
 			},
 		};
@@ -648,13 +657,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 		const source = nodes[0].id;
 		const sourceHandle = createCanvasConnectionHandleString({
 			mode: CanvasConnectionMode.Output,
-			type: NodeConnectionType.Main,
+			type: NodeConnectionTypes.Main,
 			index: 1,
 		});
 		const target = nodes[1].id;
 		const targetHandle = createCanvasConnectionHandleString({
 			mode: CanvasConnectionMode.Input,
-			type: NodeConnectionType.Main,
+			type: NodeConnectionTypes.Main,
 			index: 0,
 		});
 		const id = createCanvasConnectionId({
@@ -675,12 +684,12 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 					source: {
 						node: nodes[0].name,
 						index: 1,
-						type: NodeConnectionType.Main,
+						type: NodeConnectionTypes.Main,
 					},
 					target: {
 						node: nodes[1].name,
 						index: 0,
-						type: NodeConnectionType.Main,
+						type: NodeConnectionTypes.Main,
 					},
 				},
 			},
@@ -754,18 +763,18 @@ describe('createCanvasConnectionHandleString', () => {
 	it('should create handle string with provided values', () => {
 		const result = createCanvasConnectionHandleString({
 			mode: 'outputs',
-			type: NodeConnectionType.AiMemory,
+			type: NodeConnectionTypes.AiMemory,
 			index: 2,
 		});
-		expect(result).toBe(`outputs/${NodeConnectionType.AiMemory}/2`);
+		expect(result).toBe(`outputs/${NodeConnectionTypes.AiMemory}/2`);
 	});
 
 	it('should create handle string with mode and type only', () => {
 		const result = createCanvasConnectionHandleString({
 			mode: 'inputs',
-			type: NodeConnectionType.AiTool,
+			type: NodeConnectionTypes.AiTool,
 		});
-		expect(result).toBe(`inputs/${NodeConnectionType.AiTool}/0`);
+		expect(result).toBe(`inputs/${NodeConnectionTypes.AiTool}/0`);
 	});
 
 	it('should create handle string with mode and index only', () => {
@@ -811,15 +820,15 @@ describe('mapLegacyEndpointsToCanvasConnectionPort', () => {
 
 	it('should map string endpoints correctly', () => {
 		const endpoints: INodeTypeDescription['inputs'] = [
-			NodeConnectionType.Main,
-			NodeConnectionType.AiTool,
+			NodeConnectionTypes.Main,
+			NodeConnectionTypes.AiTool,
 		];
 		const result = mapLegacyEndpointsToCanvasConnectionPort(endpoints);
 
 		expect(result).toEqual([
-			{ type: NodeConnectionType.Main, index: 0, label: undefined },
+			{ type: NodeConnectionTypes.Main, index: 0, label: undefined },
 			{
-				type: NodeConnectionType.AiTool,
+				type: NodeConnectionTypes.AiTool,
 				index: 0,
 				label: undefined,
 				maxConnections: undefined,
@@ -829,15 +838,15 @@ describe('mapLegacyEndpointsToCanvasConnectionPort', () => {
 
 	it('should map object endpoints correctly', () => {
 		const endpoints: INodeTypeDescription['inputs'] = [
-			{ type: NodeConnectionType.Main, displayName: 'Main Input' },
-			{ type: NodeConnectionType.AiTool, displayName: 'AI Tool', required: true },
+			{ type: NodeConnectionTypes.Main, displayName: 'Main Input' },
+			{ type: NodeConnectionTypes.AiTool, displayName: 'AI Tool', required: true },
 		];
 		const result = mapLegacyEndpointsToCanvasConnectionPort(endpoints);
 
 		expect(result).toEqual([
-			{ type: NodeConnectionType.Main, index: 0, label: 'Main Input' },
+			{ type: NodeConnectionTypes.Main, index: 0, label: 'Main Input' },
 			{
-				type: NodeConnectionType.AiTool,
+				type: NodeConnectionTypes.AiTool,
 				index: 0,
 				label: 'AI Tool',
 				required: true,
@@ -848,61 +857,61 @@ describe('mapLegacyEndpointsToCanvasConnectionPort', () => {
 
 	it('should map mixed string and object endpoints correctly', () => {
 		const endpoints: INodeTypeDescription['inputs'] = [
-			NodeConnectionType.Main,
-			{ type: NodeConnectionType.AiTool, displayName: 'AI Tool' },
-			NodeConnectionType.Main,
+			NodeConnectionTypes.Main,
+			{ type: NodeConnectionTypes.AiTool, displayName: 'AI Tool' },
+			NodeConnectionTypes.Main,
 		];
 		const result = mapLegacyEndpointsToCanvasConnectionPort(endpoints);
 
 		expect(result).toEqual([
-			{ type: NodeConnectionType.Main, index: 0, label: undefined },
+			{ type: NodeConnectionTypes.Main, index: 0, label: undefined },
 			{
-				type: NodeConnectionType.AiTool,
+				type: NodeConnectionTypes.AiTool,
 				index: 0,
 				label: 'AI Tool',
 				maxConnections: undefined,
 			},
-			{ type: NodeConnectionType.Main, index: 1, label: undefined },
+			{ type: NodeConnectionTypes.Main, index: 1, label: undefined },
 		]);
 	});
 
 	it('should handle multiple same type object endpoints', () => {
 		const endpoints: INodeTypeDescription['inputs'] = [
-			{ type: NodeConnectionType.Main, displayName: 'Main Input' },
-			{ type: NodeConnectionType.Main, displayName: 'Secondary Main Input' },
+			{ type: NodeConnectionTypes.Main, displayName: 'Main Input' },
+			{ type: NodeConnectionTypes.Main, displayName: 'Secondary Main Input' },
 		];
 		const result = mapLegacyEndpointsToCanvasConnectionPort(endpoints);
 
 		expect(result).toEqual([
-			{ type: NodeConnectionType.Main, index: 0, label: 'Main Input' },
-			{ type: NodeConnectionType.Main, index: 1, label: 'Secondary Main Input' },
+			{ type: NodeConnectionTypes.Main, index: 0, label: 'Main Input' },
+			{ type: NodeConnectionTypes.Main, index: 1, label: 'Secondary Main Input' },
 		]);
 	});
 
 	it('should handle endpoints with separate names', () => {
 		const endpoints: INodeTypeDescription['inputs'] = [
-			NodeConnectionType.Main,
-			NodeConnectionType.Main,
+			NodeConnectionTypes.Main,
+			NodeConnectionTypes.Main,
 		];
 		const result = mapLegacyEndpointsToCanvasConnectionPort(endpoints, ['First', 'Second']);
 
 		expect(result).toEqual([
-			{ type: NodeConnectionType.Main, index: 0, label: 'First' },
-			{ type: NodeConnectionType.Main, index: 1, label: 'Second' },
+			{ type: NodeConnectionTypes.Main, index: 0, label: 'First' },
+			{ type: NodeConnectionTypes.Main, index: 1, label: 'Second' },
 		]);
 	});
 
 	it('should map required and non-required endpoints correctly', () => {
 		const endpoints: INodeTypeDescription['inputs'] = [
-			{ type: NodeConnectionType.Main, displayName: 'Main Input', required: true },
-			{ type: NodeConnectionType.AiTool, displayName: 'Optional Tool', required: false },
+			{ type: NodeConnectionTypes.Main, displayName: 'Main Input', required: true },
+			{ type: NodeConnectionTypes.AiTool, displayName: 'Optional Tool', required: false },
 		];
 		const result = mapLegacyEndpointsToCanvasConnectionPort(endpoints);
 
 		expect(result).toEqual([
-			{ type: NodeConnectionType.Main, index: 0, label: 'Main Input', required: true },
+			{ type: NodeConnectionTypes.Main, index: 0, label: 'Main Input', required: true },
 			{
-				type: NodeConnectionType.AiTool,
+				type: NodeConnectionTypes.AiTool,
 				index: 0,
 				label: 'Optional Tool',
 				maxConnections: undefined,
@@ -912,9 +921,9 @@ describe('mapLegacyEndpointsToCanvasConnectionPort', () => {
 
 	it('should map maxConnections correctly', () => {
 		const endpoints: INodeTypeDescription['inputs'] = [
-			NodeConnectionType.Main,
+			NodeConnectionTypes.Main,
 			{
-				type: NodeConnectionType.AiMemory,
+				type: NodeConnectionTypes.AiMemory,
 				maxConnections: 1,
 				displayName: 'Optional Tool',
 				required: false,
@@ -924,12 +933,12 @@ describe('mapLegacyEndpointsToCanvasConnectionPort', () => {
 
 		expect(result).toEqual([
 			{
-				type: NodeConnectionType.Main,
+				type: NodeConnectionTypes.Main,
 				maxConnections: undefined,
 				index: 0,
 				label: undefined,
 			},
-			{ type: NodeConnectionType.AiMemory, maxConnections: 1, index: 0, label: 'Optional Tool' },
+			{ type: NodeConnectionTypes.AiMemory, maxConnections: 1, index: 0, label: 'Optional Tool' },
 		]);
 	});
 });
@@ -982,51 +991,55 @@ describe('insertSpacersBetweenEndpoints', () => {
 	it('should insert spacers when there are less than min endpoints count', () => {
 		const endpoints = [{ index: 0, required: true }];
 		const requiredEndpointsCount = endpoints.filter((endpoint) => endpoint.required).length;
-		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount, 4);
-		expect(result).toEqual([{ index: 0, required: true }, null, null, null]);
+		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount);
+		expect(result).toEqual([{ index: 0, required: true }, null, null, null, null]);
 	});
 
 	it('should not insert spacers when there are at least min endpoints count', () => {
-		const endpoints = [{ index: 0, required: true }, { index: 1 }, { index: 2 }, { index: 3 }];
+		const endpoints = [
+			{ index: 0, required: true },
+			{ index: 1 },
+			{ index: 2 },
+			{ index: 3 },
+			{ index: 4 },
+		];
 		const requiredEndpointsCount = endpoints.filter((endpoint) => endpoint.required).length;
-		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount, 4);
+		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount);
 		expect(result).toEqual(endpoints);
 	});
 
 	it('should handle zero required endpoints', () => {
 		const endpoints = [{ index: 0, required: false }];
 		const requiredEndpointsCount = endpoints.filter((endpoint) => endpoint.required).length;
-		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount, 4);
-		expect(result).toEqual([null, null, null, { index: 0, required: false }]);
+		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount);
+		expect(result).toEqual([null, null, null, null, { index: 0, required: false }]);
 	});
 
 	it('should handle no endpoints', () => {
 		const endpoints: Array<{ index: number; required: boolean }> = [];
 		const requiredEndpointsCount = endpoints.filter((endpoint) => endpoint.required).length;
-		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount, 4);
-		expect(result).toEqual([null, null, null, null]);
+		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount);
+		expect(result).toEqual([null, null, null, null, null]);
 	});
 
-	it('should handle required endpoints greater than min endpoints count', () => {
-		const endpoints = [
-			{ index: 0, required: true },
-			{ index: 1, required: true },
-			{ index: 2, required: true },
-			{ index: 3, required: true },
-			{ index: 4, required: true },
-		];
+	it('should handle required endpoints greater than NODE_MIN_INPUT_ITEMS_COUNT', () => {
+		const endpoints = Array.from({ length: NODE_MIN_INPUT_ITEMS_COUNT + 1 }).map((_, index) => ({
+			index,
+			required: true,
+		}));
 		const requiredEndpointsCount = endpoints.filter((endpoint) => endpoint.required).length;
-		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount, 4);
+		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount);
 		expect(result).toEqual(endpoints);
 	});
 
 	it('should insert spacers between required and optional endpoints', () => {
 		const endpoints = [{ index: 0, required: true }, { index: 1, required: true }, { index: 2 }];
 		const requiredEndpointsCount = endpoints.filter((endpoint) => endpoint.required).length;
-		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount, 4);
+		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount);
 		expect(result).toEqual([
 			{ index: 0, required: true },
 			{ index: 1, required: true },
+			null,
 			null,
 			{ index: 2 },
 		]);
@@ -1035,14 +1048,7 @@ describe('insertSpacersBetweenEndpoints', () => {
 	it('should handle required endpoints count greater than endpoints length', () => {
 		const endpoints = [{ index: 0, required: true }];
 		const requiredEndpointsCount = endpoints.filter((endpoint) => endpoint.required).length;
-		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount, 4);
-		expect(result).toEqual([{ index: 0, required: true }, null, null, null]);
-	});
-
-	it('should handle min endpoints count less than required endpoints count', () => {
-		const endpoints = [{ index: 0, required: false }];
-		const requiredEndpointsCount = endpoints.filter((endpoint) => endpoint.required).length;
-		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount, 0);
-		expect(result).toEqual([{ index: 0, required: false }]);
+		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount);
+		expect(result).toEqual([{ index: 0, required: true }, null, null, null, null]);
 	});
 });

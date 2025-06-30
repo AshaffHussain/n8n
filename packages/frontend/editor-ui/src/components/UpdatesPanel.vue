@@ -4,7 +4,7 @@ import TimeAgo from './TimeAgo.vue';
 import VersionCard from './VersionCard.vue';
 import { VERSIONS_MODAL_KEY } from '../constants';
 import { useVersionsStore } from '@/stores/versions.store';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 const versionsStore = useVersionsStore();
@@ -84,7 +84,7 @@ const i18n = useI18n();
 	font-size: 24px;
 	line-height: 24px;
 	color: $updates-panel-text-color;
-	font-weight: 400;
+	font-weight: var(--font-weight-regular);
 }
 
 .description {
@@ -96,7 +96,7 @@ const i18n = useI18n();
 		font-size: 16px;
 		line-height: 22px;
 		color: $updates-panel-description-text-color;
-		font-weight: 400;
+		font-weight: var(--font-weight-regular);
 		margin: 0 0 16px 0;
 	}
 
@@ -106,6 +106,7 @@ const i18n = useI18n();
 
 	.link {
 		padding-left: 0px;
+		display: flex;
 	}
 
 	.link:hover {

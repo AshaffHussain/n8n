@@ -2,11 +2,9 @@ import type {
 	AppliedThemeOption,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
-	ITemplatesNode,
-	IVersionNode,
 	NodeAuthenticationOption,
-	SimplifiedNodeType,
 } from '@/Interface';
+import type { ITemplatesNode } from '@n8n/rest-api-client/api/templates';
 import {
 	CORE_NODES_CATEGORY,
 	MAIN_AUTH_FIELD_NAME,
@@ -14,21 +12,21 @@ import {
 	NON_ACTIVATABLE_TRIGGER_NODE_TYPES,
 	TEMPLATES_NODES_FILTER,
 } from '@/constants';
-import { i18n as locale } from '@/plugins/i18n';
+import { i18n as locale } from '@n8n/i18n';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { isResourceLocatorValue } from '@/utils/typeGuards';
 import { isJsonKeyObject } from '@/utils/typesUtils';
-import type {
-	IDataObject,
-	INodeCredentialDescription,
-	INodeExecutionData,
-	INodeProperties,
-	INodeTypeDescription,
-	NodeParameterValueType,
-	ResourceMapperField,
-	Themed,
+import {
+	isResourceLocatorValue,
+	type IDataObject,
+	type INodeCredentialDescription,
+	type INodeExecutionData,
+	type INodeProperties,
+	type INodeTypeDescription,
+	type NodeParameterValueType,
+	type ResourceMapperField,
+	type Themed,
 } from 'n8n-workflow';
 
 /*
@@ -501,34 +499,4 @@ export const getThemedValue = <T extends string>(
 	}
 
 	return value[theme];
-};
-
-export const getNodeIcon = (
-	nodeType: INodeTypeDescription | SimplifiedNodeType | IVersionNode,
-	theme: AppliedThemeOption = 'light',
-): string | null => {
-	return getThemedValue(nodeType.icon, theme);
-};
-
-export const getNodeIconUrl = (
-	nodeType: INodeTypeDescription | SimplifiedNodeType | IVersionNode,
-	theme: AppliedThemeOption = 'light',
-): string | null => {
-	return getThemedValue(nodeType.iconUrl, theme);
-};
-
-export const getBadgeIconUrl = (
-	nodeType: INodeTypeDescription | SimplifiedNodeType,
-	theme: AppliedThemeOption = 'light',
-): string | null => {
-	return getThemedValue(nodeType.badgeIconUrl, theme);
-};
-
-export const getNodeIconColor = (
-	nodeType?: INodeTypeDescription | SimplifiedNodeType | IVersionNode | null,
-) => {
-	if (nodeType && 'iconColor' in nodeType && nodeType.iconColor) {
-		return `var(--color-node-icon-${nodeType.iconColor})`;
-	}
-	return nodeType?.defaults?.color?.toString();
 };

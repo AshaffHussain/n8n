@@ -13,7 +13,7 @@ import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterIssues from '@/components//ParameterIssues.vue';
 import ParameterOptions from '@/components//ParameterOptions.vue';
 import { computed } from 'vue';
-import { i18n as locale } from '@/plugins/i18n';
+import { i18n as locale } from '@n8n/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import {
 	fieldCannotBeDeleted,
@@ -29,7 +29,7 @@ import {
 	N8nSelect,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 interface Props {
 	parameter: INodeProperties;
@@ -449,7 +449,7 @@ defineExpose({
 	padding: 0 0 0 var(--spacing-s);
 
 	.parameterInput {
-		width: 100%;
+		width: calc(100% - var(--delete-option-width));
 	}
 
 	.parameterInput:first-child {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { EditorState, SelectionRange } from '@codemirror/state';
 
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import type { Segment } from '@/types/expressions';
 import { onBeforeUnmount } from 'vue';
@@ -53,7 +53,7 @@ onBeforeUnmount(() => {
 			>
 			</ExpressionOutput>
 		</n8n-text>
-		<div :class="$style.footer" v-if="!isReadOnly">
+		<div v-if="!isReadOnly" :class="$style.footer">
 			<InlineExpressionTip
 				:editor-state="editorState"
 				:selection="selection"

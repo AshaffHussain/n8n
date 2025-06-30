@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { useDebounce } from '@/composables/useDebounce';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import type {
 	AssignmentCollectionValue,
 	AssignmentValue,
+	FieldTypeMap,
 	INode,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -20,11 +21,17 @@ interface Props {
 	parameter: INodeProperties;
 	value: AssignmentCollectionValue;
 	path: string;
+	defaultType?: keyof FieldTypeMap;
+	disableType?: boolean;
 	node: INode | null;
 	isReadOnly?: boolean;
 }
 
-const props = withDefaults(defineProps<Props>(), { isReadOnly: false });
+const props = withDefaults(defineProps<Props>(), {
+	isReadOnly: false,
+	defaultType: undefined,
+	disableType: false,
+});
 
 const emit = defineEmits<{
 	valueChanged: [value: { name: string; node: string; value: AssignmentCollectionValue }];
@@ -82,7 +89,7 @@ function addAssignment(): void {
 		id: crypto.randomUUID(),
 		name: '',
 		value: '',
-		type: 'string',
+		type: props.defaultType ?? 'string',
 	});
 }
 
@@ -91,7 +98,7 @@ function dropAssignment(expression: string): void {
 		id: crypto.randomUUID(),
 		name: propertyNameFromExpression(expression),
 		value: `=${expression}`,
-		type: typeFromExpression(expression),
+		type: props.defaultType ?? typeFromExpression(expression),
 	});
 }
 
@@ -157,6 +164,7 @@ function optionSelected(action: string) {
 							:issues="getIssues(index)"
 							:class="$style.assignment"
 							:is-read-only="isReadOnly"
+							:disable-type="disableType"
 							@update:model-value="(value) => onAssignmentUpdate(index, value)"
 							@remove="() => onAssignmentRemove(index)"
 						>

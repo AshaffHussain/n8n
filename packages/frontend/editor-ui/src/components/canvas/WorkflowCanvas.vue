@@ -8,6 +8,9 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { CanvasEventBusEvents } from '@/types';
 import { useVueFlow } from '@vue-flow/core';
+import { throttledRef } from '@vueuse/core';
+import { useSettingsStore } from '@/stores/settings.store';
+import ExperimentalNodeDetailsDrawer from './experimental/components/ExperimentalNodeDetailsDrawer.vue';
 
 defineOptions({
 	inheritAttrs: false,
@@ -33,8 +36,9 @@ const props = withDefaults(
 );
 
 const $style = useCssModule();
+const settingsStore = useSettingsStore();
 
-const { onNodesInitialized } = useVueFlow({ id: props.id });
+const { onNodesInitialized, getSelectedNodes } = useVueFlow({ id: props.id });
 
 const workflow = toRef(props, 'workflow');
 const workflowObject = toRef(props, 'workflowObject');
@@ -59,6 +63,9 @@ onNodesInitialized(() => {
 		initialFitViewDone.value = true;
 	}
 });
+
+const mappedNodesThrottled = throttledRef(mappedNodes, 200);
+const mappedConnectionsThrottled = throttledRef(mappedConnections, 200);
 </script>
 
 <template>
@@ -67,20 +74,24 @@ onNodesInitialized(() => {
 			<Canvas
 				v-if="workflow"
 				:id="id"
-				:nodes="mappedNodes"
-				:connections="mappedConnections"
+				:nodes="executing ? mappedNodesThrottled : mappedNodes"
+				:connections="executing ? mappedConnectionsThrottled : mappedConnections"
 				:event-bus="eventBus"
 				:read-only="readOnly"
 				v-bind="$attrs"
 			/>
 		</div>
 		<slot />
+		<ExperimentalNodeDetailsDrawer
+			v-if="settingsStore.experimental__dockedNodeSettingsEnabled && !props.readOnly"
+			:selected-nodes="getSelectedNodes"
+		/>
 	</div>
 </template>
 
 <style lang="scss" module>
 .wrapper {
-	display: block;
+	display: flex;
 	position: relative;
 	width: 100%;
 	height: 100%;
@@ -92,5 +103,7 @@ onNodesInitialized(() => {
 	height: 100%;
 	position: relative;
 	display: block;
+	align-items: stretch;
+	justify-content: stretch;
 }
 </style>

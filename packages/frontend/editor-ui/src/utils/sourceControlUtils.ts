@@ -1,10 +1,10 @@
 import { h, nextTick } from 'vue';
 import { RouterLink } from 'vue-router';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { type SourceControlledFile, SOURCE_CONTROL_FILE_STATUS } from '@n8n/api-types';
-import type { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { VIEWS } from '@/constants';
-import { groupBy } from 'lodash-es';
+import groupBy from 'lodash/groupBy';
 import type { useToast } from '@/composables/useToast';
 import { telemetry } from '@/plugins/telemetry';
 
@@ -83,6 +83,7 @@ const pullMessage = ({
 	tags,
 	variables,
 	workflow,
+	folders,
 }: Partial<Record<SourceControlledFile['type'], SourceControlledFile[]>>) => {
 	const messages: string[] = [];
 
@@ -112,6 +113,10 @@ const pullMessage = ({
 		messages.push(i18n.baseText('generic.tag_plural'));
 	}
 
+	if (folders?.length) {
+		messages.push(i18n.baseText('generic.folders_plural'));
+	}
+
 	return [
 		new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).format(messages),
 		'were pulled',
@@ -131,14 +136,14 @@ export const notifyUserAboutPullWorkFolderOutcome = async (
 		return;
 	}
 
-	const { credential, tags, variables, workflow } = groupBy(files, 'type');
+	const { credential, tags, variables, workflow, folders } = groupBy(files, 'type');
 
 	const toastMessages = [
 		...(variables?.length ? [variablesToast] : []),
 		...(credential?.length ? [credentialsToast] : []),
 		{
 			title: i18n.baseText('settings.sourceControl.pull.success.title'),
-			message: pullMessage({ credential, tags, variables, workflow }),
+			message: pullMessage({ credential, tags, variables, workflow, folders }),
 			type: 'success' as const,
 		},
 	];

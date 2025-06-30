@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import type { XYPosition } from '@/Interface';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 export interface Props {
 	showTooltip: boolean;
@@ -86,7 +86,7 @@ const containerCssVars = computed(() => ({
 
 .label {
 	width: max-content;
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight-medium);
 	font-size: var(--font-size-m);
 	line-height: var(--font-line-height-xloose);
 	color: var(--color-text-dark);

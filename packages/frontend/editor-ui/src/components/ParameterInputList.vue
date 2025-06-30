@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type {
+	CalloutActionType,
 	INodeParameters,
 	INodeProperties,
 	NodeParameterValue,
@@ -8,7 +9,7 @@ import type {
 import { ADD_FORM_NOTICE, deepCopy, NodeHelpers } from 'n8n-workflow';
 import { computed, defineAsyncComponent, onErrorCaptured, ref, watch, type WatchSource } from 'vue';
 
-import type { IUpdateInformation } from '@/Interface';
+import type { INodeUi, IUpdateInformation } from '@/Interface';
 
 import AssignmentCollection from '@/components/AssignmentCollection/AssignmentCollection.vue';
 import ButtonParameter from '@/components/ButtonParameter/ButtonParameter.vue';
@@ -17,17 +18,20 @@ import ImportCurlParameter from '@/components/ImportCurlParameter.vue';
 import MultipleParameter from '@/components/MultipleParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useMessage } from '@/composables/useMessage';
 import {
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	KEEP_AUTH_IN_NDV_FOR_NODES,
+	MODAL_CONFIRM,
 	WAIT_NODE_TYPE,
 } from '@/constants';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+
 import {
 	getMainAuthField,
 	getNodeAuthFields,
@@ -35,9 +39,19 @@ import {
 } from '@/utils/nodeTypesUtils';
 import { captureException } from '@sentry/vue';
 import { computedWithControl } from '@vueuse/core';
-import { get, set } from 'lodash-es';
-import { N8nIcon, N8nIconButton, N8nInputLabel, N8nNotice, N8nText } from '@n8n/design-system';
-import { useRouter } from 'vue-router';
+import get from 'lodash/get';
+import set from 'lodash/set';
+import {
+	N8nCallout,
+	N8nIcon,
+	N8nIconButton,
+	N8nInputLabel,
+	N8nLink,
+	N8nNotice,
+	N8nText,
+} from '@n8n/design-system';
+import { storeToRefs } from 'pinia';
+import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 
 const LazyFixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollectionParameter.vue'),
@@ -50,6 +64,7 @@ const LazyCollectionParameter = defineAsyncComponent(
 const showIssuesInLabelFor = ['fixedCollection'];
 
 type Props = {
+	node?: INodeUi;
 	nodeValues: INodeParameters;
 	parameters: INodeProperties[];
 	path?: string;
@@ -70,11 +85,15 @@ const emit = defineEmits<{
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 
+const message = useMessage();
 const nodeHelpers = useNodeHelpers();
 const asyncLoadingError = ref(false);
-const router = useRouter();
-const workflowHelpers = useWorkflowHelpers({ router });
+const workflowHelpers = useWorkflowHelpers();
 const i18n = useI18n();
+const { dismissCallout, isCalloutDismissed, openRagStarterTemplate, isRagStarterCalloutVisible } =
+	useCalloutHelpers();
+
+const { activeNode } = storeToRefs(ndvStore);
 
 onErrorCaptured((e, component) => {
 	if (
@@ -102,6 +121,8 @@ const nodeType = computed(() => {
 	return null;
 });
 
+const node = computed(() => props.node ?? ndvStore.activeNode);
+
 const filteredParameters = computedWithControl(
 	[() => props.parameters, () => props.nodeValues] as WatchSource[],
 	() => {
@@ -109,17 +130,20 @@ const filteredParameters = computedWithControl(
 			displayNodeParameter(parameter),
 		);
 
-		const activeNode = ndvStore.activeNode;
-
-		if (activeNode && activeNode.type === FORM_TRIGGER_NODE_TYPE) {
-			return updateFormTriggerParameters(parameters, activeNode.name);
+		if (node.value && node.value.type === FORM_TRIGGER_NODE_TYPE) {
+			return updateFormTriggerParameters(parameters, node.value.name);
 		}
+
+		if (node.value && node.value.type === FORM_NODE_TYPE) {
+			return updateFormParameters(parameters, node.value.name);
+		}
+
 		if (
-			activeNode &&
-			activeNode.type === WAIT_NODE_TYPE &&
-			activeNode.parameters.resume === 'form'
+			node.value &&
+			node.value.type === WAIT_NODE_TYPE &&
+			node.value.parameters.resume === 'form'
 		) {
-			return updateWaitParameters(parameters, activeNode.name);
+			return updateWaitParameters(parameters, node.value.name);
 		}
 
 		return parameters;
@@ -129,8 +153,6 @@ const filteredParameters = computedWithControl(
 const filteredParameterNames = computed(() => {
 	return filteredParameters.value.map((parameter) => parameter.name);
 });
-
-const node = computed(() => ndvStore.activeNode);
 
 const nodeAuthFields = computed(() => {
 	return getNodeAuthFields(nodeType.value);
@@ -263,6 +285,19 @@ function updateWaitParameters(parameters: INodeProperties[], nodeName: string) {
 		}
 		return waitNodeParameters;
 	}
+
+	return parameters;
+}
+
+function updateFormParameters(parameters: INodeProperties[], nodeName: string) {
+	const workflow = workflowHelpers.getCurrentWorkflow();
+	const parentNodes = workflow.getParentNodes(nodeName);
+
+	const formTriggerName = parentNodes.find(
+		(node) => workflow.nodes[node].type === FORM_TRIGGER_NODE_TYPE,
+	);
+
+	if (formTriggerName) return parameters.filter((parameter) => parameter.name !== 'triggerNotice');
 
 	return parameters;
 }
@@ -447,7 +482,13 @@ function getParameterIssues(parameter: INodeProperties): string[] {
 	if (!node.value || !showIssuesInLabelFor.includes(parameter.type)) {
 		return [];
 	}
-	const issues = NodeHelpers.getParameterIssues(parameter, node.value.parameters, '', node.value);
+	const issues = NodeHelpers.getParameterIssues(
+		parameter,
+		node.value.parameters,
+		'',
+		node.value,
+		nodeType.value,
+	);
 
 	return issues.parameters?.[parameter.name] ?? [];
 }
@@ -498,6 +539,47 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 ): T {
 	return nodeHelpers.getParameterValue(props.nodeValues, name, props.path) as T;
 }
+
+function isRagStarterCallout(parameter: INodeProperties): boolean {
+	return parameter.type === 'callout' && parameter.name === 'ragStarterCallout';
+}
+
+function isCalloutVisible(parameter: INodeProperties): boolean {
+	if (isCalloutDismissed(parameter.name)) return false;
+
+	if (isRagStarterCallout(parameter)) {
+		return isRagStarterCalloutVisible.value;
+	}
+
+	return true;
+}
+
+async function onCalloutAction(action: CalloutActionType) {
+	if (action === 'openRagStarterTemplate') {
+		await openRagStarterTemplate(activeNode.value?.type ?? 'no active node');
+	}
+}
+
+const onCalloutDismiss = async (parameter: INodeProperties) => {
+	const dismissConfirmed = await message.confirm(
+		i18n.baseText('parameterInputList.callout.dismiss.confirm.text'),
+		{
+			showClose: true,
+			confirmButtonText: i18n.baseText(
+				'parameterInputList.callout.dismiss.confirm.confirmButtonText',
+			),
+			cancelButtonText: i18n.baseText(
+				'parameterInputList.callout.dismiss.confirm.cancelButtonText',
+			),
+		},
+	);
+
+	if (dismissConfirmed !== MODAL_CONFIRM) {
+		return;
+	}
+
+	await dismissCallout(parameter.name);
+};
 </script>
 
 <template>
@@ -533,9 +615,49 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 			<N8nNotice
 				v-else-if="parameter.type === 'notice'"
 				:class="['parameter-item', parameter.typeOptions?.containerClass ?? '']"
-				:content="i18n.nodeText().inputLabelDisplayName(parameter, path)"
+				:content="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
 				@action="onNoticeAction"
 			/>
+
+			<template v-else-if="parameter.type === 'callout'">
+				<N8nCallout
+					v-if="isCalloutVisible(parameter)"
+					:class="['parameter-item', parameter.typeOptions?.containerClass ?? '']"
+					theme="secondary"
+				>
+					<N8nText size="small">
+						<N8nText
+							size="small"
+							v-n8n-html="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
+						/>
+						<template v-if="parameter.typeOptions?.calloutAction">
+							{{ ' ' }}
+							<N8nLink
+								v-if="parameter.typeOptions?.calloutAction"
+								theme="secondary"
+								size="small"
+								:bold="true"
+								:underline="true"
+								@click="onCalloutAction(parameter.typeOptions.calloutAction.type)"
+							>
+								{{ parameter.typeOptions.calloutAction.label }}
+							</N8nLink>
+						</template>
+					</N8nText>
+
+					<template #trailingContent>
+						<N8nIcon
+							icon="times"
+							title="Dismiss"
+							size="medium"
+							type="secondary"
+							class="callout-dismiss"
+							data-test-id="callout-dismiss-icon"
+							@click="onCalloutDismiss(parameter)"
+						/>
+					</template>
+				</N8nCallout>
+			</template>
 
 			<div v-else-if="parameter.type === 'button'" class="parameter-item">
 				<ButtonParameter
@@ -552,8 +674,8 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 				class="multi-parameter"
 			>
 				<N8nInputLabel
-					:label="i18n.nodeText().inputLabelDisplayName(parameter, path)"
-					:tooltip-text="i18n.nodeText().inputLabelDescription(parameter, path)"
+					:label="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
+					:tooltip-text="i18n.nodeText(activeNode?.type).inputLabelDescription(parameter, path)"
 					size="small"
 					:underline="true"
 					:input-name="parameter.name"
@@ -646,6 +768,8 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 				:path="getPath(parameter.name)"
 				:node="node"
 				:is-read-only="isReadOnly"
+				:default-type="parameter.typeOptions?.assignment?.defaultType"
+				:disable-type="parameter.typeOptions?.assignment?.disableType"
 				@value-changed="valueChanged"
 			/>
 			<div v-else-if="credentialsParameterIndex !== index" class="parameter-item">
@@ -736,6 +860,15 @@ function getParameterValue<T extends NodeParameterValueType = NodeParameterValue
 	.async-notice {
 		display: block;
 		padding: var(--spacing-3xs) 0;
+	}
+
+	.callout-dismiss {
+		margin-left: var(--spacing-xs);
+		line-height: 1;
+		cursor: pointer;
+	}
+	.callout-dismiss:hover {
+		color: var(--color-icon-hover);
 	}
 }
 </style>

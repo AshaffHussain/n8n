@@ -11,6 +11,8 @@ import type {
 import type { IExecutionResponse, INodeUi } from '@/Interface';
 import type { ComputedRef, Ref } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';
+import type { CanvasLayoutSource } from '@/composables/useCanvasLayout';
+import type { NodeIconSource } from '../utils/nodeIcon';
 
 export const enum CanvasConnectionMode {
 	Input = 'inputs',
@@ -43,6 +45,7 @@ export const enum CanvasNodeRenderType {
 	Default = 'default',
 	StickyNote = 'n8n-nodes-base.stickyNote',
 	AddNodes = 'n8n-nodes-internal.addNodes',
+	AIPrompt = 'n8n-nodes-base.aiPrompt',
 }
 
 export type CanvasNodeDefaultRenderLabelSize = 'small' | 'medium' | 'large';
@@ -71,11 +74,17 @@ export type CanvasNodeDefaultRender = {
 		};
 		tooltip?: string;
 		dirtiness?: CanvasNodeDirtinessType;
+		icon?: NodeIconSource;
 	}>;
 };
 
 export type CanvasNodeAddNodesRender = {
 	type: CanvasNodeRenderType.AddNodes;
+	options: Record<string, never>;
+};
+
+export type CanvasNodeAIPromptRender = {
+	type: CanvasNodeRenderType.AIPrompt;
 	options: Record<string, never>;
 };
 
@@ -114,13 +123,18 @@ export interface CanvasNodeData {
 		status?: ExecutionStatus;
 		waiting?: string;
 		running: boolean;
+		waitingForNext?: boolean;
 	};
 	runData: {
 		outputMap: ExecutionOutputMap;
 		iterations: number;
 		visible: boolean;
 	};
-	render: CanvasNodeDefaultRender | CanvasNodeStickyNoteRender | CanvasNodeAddNodesRender;
+	render:
+		| CanvasNodeDefaultRender
+		| CanvasNodeStickyNoteRender
+		| CanvasNodeAddNodesRender
+		| CanvasNodeAIPromptRender;
 }
 
 export type CanvasNode = Node<CanvasNodeData>;
@@ -162,12 +176,13 @@ export type CanvasEventBusEvents = {
 	fitView: never;
 	'saved:workflow': never;
 	'open:execution': IExecutionResponse;
-	'nodes:select': { ids: string[] };
+	'nodes:select': { ids: string[]; panIntoView?: boolean };
 	'nodes:action': {
 		ids: string[];
 		action: keyof CanvasNodeEventBusEvents;
 		payload?: CanvasNodeEventBusEvents[keyof CanvasNodeEventBusEvents];
 	};
+	tidyUp: { source: CanvasLayoutSource };
 };
 
 export interface CanvasNodeInjectionData {
@@ -214,4 +229,11 @@ export type BoundingBox = {
 	y: number;
 	width: number;
 	height: number;
+};
+
+export type ViewportBoundaries = {
+	xMin: number;
+	xMax: number;
+	yMin: number;
+	yMax: number;
 };

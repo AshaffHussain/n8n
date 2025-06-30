@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 
 type Props = {
@@ -30,7 +30,7 @@ const goToUpgrade = async () => {
 					{{
 						locale.baseText('projects.create.limit', {
 							adjustToNumber: props.limit,
-							interpolate: { num: String(props.limit) },
+							interpolate: { count: String(props.limit) },
 						})
 					}}
 				</template>

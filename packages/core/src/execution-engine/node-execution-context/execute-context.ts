@@ -1,7 +1,9 @@
 import type {
 	AINodeConnectionType,
 	CallbackManager,
+	ChunkType,
 	CloseFunction,
+	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
 	IExecuteResponsePromiseData,
@@ -13,6 +15,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	NodeExecutionHint,
 	Result,
+	StructuredChunk,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -20,7 +23,8 @@ import {
 	ApplicationError,
 	createDeferredPromise,
 	createEnvProviderState,
-	NodeConnectionType,
+	jsonParse,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { BaseExecuteContext } from './base-execute-context';
@@ -127,6 +131,23 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 			)) as IExecuteFunctions['getNodeParameter'];
 	}
 
+	async sendChunk(type: ChunkType, content?: IDataObject | string): Promise<void> {
+		const node = this.getNode();
+		const metadata = {
+			nodeId: node.id,
+			nodeName: node.name,
+			timestamp: Date.now(),
+		};
+
+		const message: StructuredChunk = {
+			type,
+			content: content ? JSON.stringify(content) : undefined,
+			metadata,
+		};
+
+		await this.additionalData.hooks?.runHook('sendChunk', [message]);
+	}
+
 	async startJob<T = unknown, E = unknown>(
 		jobType: string,
 		settings: unknown,
@@ -173,7 +194,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		);
 	}
 
-	getInputData(inputIndex = 0, connectionType = NodeConnectionType.Main) {
+	getInputData(inputIndex = 0, connectionType = NodeConnectionTypes.Main) {
 		if (!this.inputData.hasOwnProperty(connectionType)) {
 			// Return empty array because else it would throw error when nothing is connected to input
 			return [];
@@ -183,7 +204,10 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 
 	logNodeOutput(...args: unknown[]): void {
 		if (this.mode === 'manual') {
-			this.sendMessageToUI(...args);
+			const parsedLogArgs = args.map((arg) =>
+				typeof arg === 'string' ? jsonParse(arg, { fallbackValue: arg }) : arg,
+			);
+			this.sendMessageToUI(...parsedLogArgs);
 			return;
 		}
 

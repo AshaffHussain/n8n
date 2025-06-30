@@ -8,8 +8,8 @@ import { LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH, MAIN_NODE_PANEL_WIDTH } from '
 import { useNDVStore } from '@/stores/ndv.store';
 import { ndvEventBus } from '@/event-bus';
 import NDVFloatingNodes from '@/components/NDVFloatingNodes.vue';
-import type { MainPanelType, XYPosition } from '@/Interface';
-import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
+import type { Direction, MainPanelType, XYPosition } from '@/Interface';
+import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
 import { useThrottleFn } from '@vueuse/core';
 
@@ -43,6 +43,7 @@ const props = defineProps<Props>();
 
 const isDragging = ref<boolean>(false);
 const initialized = ref<boolean>(false);
+const containerWidth = ref<number>(uiStore.appGridDimensions.width);
 
 const emit = defineEmits<{
 	init: [{ position: number }];
@@ -84,28 +85,37 @@ onBeforeUnmount(() => {
 	ndvEventBus.off('setPositionByName', setPositionByName);
 });
 
-const containerWidth = computed(() => uiStore.appGridWidth);
+watch(
+	() => uiStore.appGridDimensions,
+	async (dimensions) => {
+		const ndv = document.getElementById('ndv');
+		if (ndv) {
+			await nextTick();
+			const { width: ndvWidth } = ndv.getBoundingClientRect();
+			containerWidth.value = ndvWidth;
+		} else {
+			containerWidth.value = dimensions.width;
+		}
+		const minRelativeWidth = pxToRelativeWidth(MIN_PANEL_WIDTH);
+		const isBelowMinWidthMainPanel = mainPanelDimensions.value.relativeWidth < minRelativeWidth;
 
-watch(containerWidth, (width) => {
-	const minRelativeWidth = pxToRelativeWidth(MIN_PANEL_WIDTH);
-	const isBelowMinWidthMainPanel = mainPanelDimensions.value.relativeWidth < minRelativeWidth;
+		// Prevent the panel resizing below MIN_PANEL_WIDTH while maintain position
+		if (isBelowMinWidthMainPanel) {
+			setMainPanelWidth(minRelativeWidth);
+		}
 
-	// Prevent the panel resizing below MIN_PANEL_WIDTH whhile maintaing position
-	if (isBelowMinWidthMainPanel) {
-		setMainPanelWidth(minRelativeWidth);
-	}
+		const isBelowMinLeft = minimumLeftPosition.value > mainPanelDimensions.value.relativeLeft;
+		const isMaxRight = maximumRightPosition.value > mainPanelDimensions.value.relativeRight;
 
-	const isBelowMinLeft = minimumLeftPosition.value > mainPanelDimensions.value.relativeLeft;
-	const isMaxRight = maximumRightPosition.value > mainPanelDimensions.value.relativeRight;
+		// When user is resizing from non-supported view(sub ~488px) we need to refit the panels
+		if (dimensions.width > MIN_WINDOW_WIDTH && isBelowMinLeft && isMaxRight) {
+			setMainPanelWidth(minRelativeWidth);
+			setPositions(getInitialLeftPosition(mainPanelDimensions.value.relativeWidth));
+		}
 
-	// When user is resizing from non-supported view(sub ~488px) we need to refit the panels
-	if (width > MIN_WINDOW_WIDTH && isBelowMinLeft && isMaxRight) {
-		setMainPanelWidth(minRelativeWidth);
-		setPositions(getInitialLeftPosition(mainPanelDimensions.value.relativeWidth));
-	}
-
-	setPositions(mainPanelDimensions.value.relativeLeft);
-});
+		setPositions(mainPanelDimensions.value.relativeLeft);
+	},
+);
 
 const currentNodePaneType = computed((): MainPanelType => {
 	if (!hasInputSlot.value) return 'inputless';
@@ -141,8 +151,8 @@ const outputPanelRelativeTranslate = computed((): number => {
 	return currentRelativeLeftDelta > 0 ? currentRelativeLeftDelta : 0;
 });
 
-const supportedResizeDirections = computed((): string[] => {
-	const supportedDirections = ['right'];
+const supportedResizeDirections = computed((): Direction[] => {
+	const supportedDirections = ['right' as Direction];
 
 	if (props.isDraggable) supportedDirections.push('left');
 	return supportedDirections;

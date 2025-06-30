@@ -6,19 +6,27 @@ import AuthView from './AuthView.vue';
 import MfaView from './MfaView.vue';
 
 import { useToast } from '@/composables/useToast';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { useSSOStore } from '@/stores/sso.store';
 
 import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS, MFA_FORM } from '@/constants';
+import type { LoginRequestDto } from '@n8n/api-types';
+
+export type EmailOrLdapLoginIdAndPassword = Pick<
+	LoginRequestDto,
+	'emailOrLdapLoginId' | 'password'
+>;
+
+export type MfaCodeOrMfaRecoveryCode = Pick<LoginRequestDto, 'mfaCode' | 'mfaRecoveryCode'>;
 
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
-const cloudPlanStore = useCloudPlanStore();
+const ssoStore = useSSOStore();
 
 const route = useRoute();
 const router = useRouter();
@@ -29,12 +37,12 @@ const telemetry = useTelemetry();
 
 const loading = ref(false);
 const showMfaView = ref(false);
-const email = ref('');
+const emailOrLdapLoginId = ref('');
 const password = ref('');
 const reportError = ref(false);
 
-const ldapLoginLabel = computed(() => settingsStore.ldapLoginLabel);
-const isLdapLoginEnabled = computed(() => settingsStore.isLdapLoginEnabled);
+const ldapLoginLabel = computed(() => ssoStore.ldapLoginLabel);
+const isLdapLoginEnabled = computed(() => ssoStore.isLdapLoginEnabled);
 const emailLabel = computed(() => {
 	let label = locale.baseText('auth.email');
 	if (isLdapLoginEnabled.value && ldapLoginLabel.value) {
@@ -50,7 +58,7 @@ const formConfig: IFormBoxConfig = reactive({
 	redirectLink: '/forgot-password',
 	inputs: [
 		{
-			name: 'email',
+			name: 'emailOrLdapLoginId',
 			properties: {
 				label: emailLabel.value,
 				type: 'email',
@@ -78,29 +86,34 @@ const formConfig: IFormBoxConfig = reactive({
 	],
 });
 
-const onMFASubmitted = async (form: { mfaCode?: string; mfaRecoveryCode?: string }) => {
+const onMFASubmitted = async (form: MfaCodeOrMfaRecoveryCode) => {
 	await login({
-		email: email.value,
+		emailOrLdapLoginId: emailOrLdapLoginId.value,
 		password: password.value,
 		mfaCode: form.mfaCode,
 		mfaRecoveryCode: form.mfaRecoveryCode,
 	});
 };
 
-const isFormWithEmailAndPassword = (values: {
-	[key: string]: string;
-}): values is { email: string; password: string } => {
-	return 'email' in values && 'password' in values;
-};
-
-const onEmailPasswordSubmitted = async (form: { [key: string]: string }) => {
-	if (!isFormWithEmailAndPassword(form)) return;
+const onEmailPasswordSubmitted = async (form: EmailOrLdapLoginIdAndPassword) => {
 	await login(form);
 };
 
 const isRedirectSafe = () => {
 	const redirect = getRedirectQueryParameter();
-	return redirect.startsWith('/') || redirect.startsWith(window.location.origin);
+
+	// Allow local redirects
+	if (redirect.startsWith('/')) {
+		return true;
+	}
+
+	try {
+		// Only allow origin domain redirects
+		const url = new URL(redirect);
+		return url.origin === window.location.origin;
+	} catch {
+		return false;
+	}
 };
 
 const getRedirectQueryParameter = () => {
@@ -111,29 +124,22 @@ const getRedirectQueryParameter = () => {
 	return redirect;
 };
 
-const login = async (form: {
-	email: string;
-	password: string;
-	mfaCode?: string;
-	mfaRecoveryCode?: string;
-}) => {
+const login = async (form: LoginRequestDto) => {
 	try {
 		loading.value = true;
 		await usersStore.loginWithCreds({
-			email: form.email,
+			emailOrLdapLoginId: form.emailOrLdapLoginId,
 			password: form.password,
 			mfaCode: form.mfaCode,
 			mfaRecoveryCode: form.mfaRecoveryCode,
 		});
 		loading.value = false;
-		if (settingsStore.isCloudDeployment) {
-			try {
-				await cloudPlanStore.checkForCloudPlanData();
-			} catch (error) {
-				console.warn('Failed to check for cloud plan data', error);
-			}
-		}
 		await settingsStore.getSettings();
+
+		if (settingsStore.activeModules.length > 0) {
+			await settingsStore.getModuleSettings();
+		}
+
 		toast.clearAllStickyNotifications();
 
 		telemetry.track('User attempted to login', {
@@ -185,8 +191,8 @@ const onFormChanged = (toForm: string) => {
 		reportError.value = false;
 	}
 };
-const cacheCredentials = (form: { email: string; password: string }) => {
-	email.value = form.email;
+const cacheCredentials = (form: EmailOrLdapLoginIdAndPassword) => {
+	emailOrLdapLoginId.value = form.emailOrLdapLoginId;
 	password.value = form.password;
 };
 </script>

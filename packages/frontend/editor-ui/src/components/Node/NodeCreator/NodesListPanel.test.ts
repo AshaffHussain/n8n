@@ -10,6 +10,12 @@ import { REGULAR_NODE_CREATOR_VIEW } from '@/constants';
 import type { NodeFilterType } from '@/Interface';
 import { createComponentRenderer } from '@/__tests__/render';
 
+vi.mock('vue-router', () => ({
+	useRoute: vi.fn(() => ({ query: {}, params: {} })),
+	useRouter: vi.fn(),
+	RouterLink: vi.fn(),
+}));
+
 function getWrapperComponent(setup: () => void) {
 	const wrapperComponent = defineComponent({
 		components: {
@@ -246,6 +252,22 @@ describe('NodesListPanel', () => {
 			await fireEvent.click(container.querySelector('.clear')!);
 			await nextTick();
 			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(9);
+		});
+
+		it('should trim search input before emitting update', async () => {
+			renderComponent();
+			await nextTick();
+
+			expect(screen.queryByTestId('node-creator-search-bar')).toBeInTheDocument();
+			await fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
+				target: { value: '    Node 1' },
+			});
+			await nextTick();
+
+			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(1);
+			expect(screen.queryByText('Node 1')).toBeInTheDocument();
+
+			expect(screen.getByTestId('node-creator-search-bar')).toHaveValue('Node 1');
 		});
 	});
 });

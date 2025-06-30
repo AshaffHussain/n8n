@@ -3,7 +3,7 @@
  * @TODO Remove this notice when Canvas V2 is the only one in use
  */
 
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { Ref } from 'vue';
@@ -15,6 +15,7 @@ import type {
 	CanvasConnectionPort,
 	CanvasNode,
 	CanvasNodeAddNodesRender,
+	CanvasNodeAIPromptRender,
 	CanvasNodeData,
 	CanvasNodeDefaultRender,
 	CanvasNodeDefaultRenderLabelSize,
@@ -38,18 +39,26 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	NodeHelpers,
 	SEND_AND_WAIT_OPERATION,
 	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
-import { CUSTOM_API_CALL_KEY, FORM_NODE_TYPE, STICKY_NODE_TYPE, WAIT_NODE_TYPE } from '@/constants';
+import {
+	CUSTOM_API_CALL_KEY,
+	FORM_NODE_TYPE,
+	SIMULATE_NODE_TYPE,
+	SIMULATE_TRIGGER_NODE_TYPE,
+	STICKY_NODE_TYPE,
+	WAIT_NODE_TYPE,
+} from '@/constants';
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { MarkerType } from '@vue-flow/core';
 import { useNodeHelpers } from './useNodeHelpers';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
+import { getNodeIconSource } from '../utils/nodeIcon';
 
 export function useCanvasMapping({
 	nodes,
@@ -84,8 +93,21 @@ export function useCanvasMapping({
 			options: {},
 		};
 	}
+	function createAIPromptRenderType(): CanvasNodeAIPromptRender {
+		return {
+			type: CanvasNodeRenderType.AIPrompt,
+			options: {},
+		};
+	}
 
 	function createDefaultNodeRenderType(node: INodeUi): CanvasNodeDefaultRender {
+		const nodeType = nodeTypeDescriptionByNodeId.value[node.id];
+		const icon = getNodeIconSource(
+			simulatedNodeTypeDescriptionByNodeId.value[node.id]
+				? simulatedNodeTypeDescriptionByNodeId.value[node.id]
+				: nodeType,
+		);
+
 		return {
 			type: CanvasNodeRenderType.Default,
 			options: {
@@ -100,6 +122,7 @@ export function useCanvasMapping({
 				},
 				tooltip: nodeTooltipById.value[node.id],
 				dirtiness: dirtinessByName.value[node.name],
+				icon,
 			},
 		};
 	}
@@ -113,6 +136,9 @@ export function useCanvasMapping({
 						break;
 					case `${CanvasNodeRenderType.AddNodes}`:
 						acc[node.id] = createAddNodesRenderType();
+						break;
+					case `${CanvasNodeRenderType.AIPrompt}`:
+						acc[node.id] = createAIPromptRenderType();
 						break;
 					default:
 						acc[node.id] = createDefaultNodeRenderType(node);
@@ -194,7 +220,7 @@ export function useCanvasMapping({
 		const labelSizes: CanvasNodeDefaultRenderLabelSize[] = ['small', 'medium', 'large'];
 		const labelSizeIndexes = ports.reduce<number[]>(
 			(sizeAcc, input) => {
-				if (input.type === NodeConnectionType.Main) {
+				if (input.type === NodeConnectionTypes.Main) {
 					sizeAcc.push(getLabelSize(input.label ?? ''));
 				}
 
@@ -279,7 +305,7 @@ export function useCanvasMapping({
 					const nodeName = i18n.shortNodeType(nodeTypeDescription.name);
 					const { eventTriggerDescription } = nodeTypeDescription;
 					acc[node.id] = i18n
-						.nodeText()
+						.nodeText(nodeTypeDescription.name)
 						.eventTriggerDescription(nodeName, eventTriggerDescription ?? '');
 				} else {
 					acc[node.id] = i18n.baseText('node.waitingForYouToCreateAnEventIn', {
@@ -301,11 +327,22 @@ export function useCanvasMapping({
 		}, {}),
 	);
 
+	const nodeExecutionWaitingForNextById = computed(() =>
+		nodes.value.reduce<Record<string, boolean>>((acc, node) => {
+			acc[node.id] =
+				node.name === workflowsStore.lastAddedExecutingNode &&
+				workflowsStore.executingNode.length === 0 &&
+				workflowsStore.isWorkflowRunning;
+
+			return acc;
+		}, {}),
+	);
+
 	const nodeExecutionStatusById = computed(() =>
 		nodes.value.reduce<Record<string, ExecutionStatus>>((acc, node) => {
-			acc[node.id] =
-				workflowsStore.getWorkflowRunData?.[node.name]?.filter(Boolean)[0]?.executionStatus ??
-				'new';
+			const tasks = workflowsStore.getWorkflowRunData?.[node.name] ?? [];
+
+			acc[node.id] = tasks.at(-1)?.executionStatus ?? 'new';
 			return acc;
 		}, {}),
 	);
@@ -365,7 +402,7 @@ export function useCanvasMapping({
 			}
 
 			if (node?.issues !== undefined) {
-				issues.push(...NodeHelpers.nodeIssuesToString(node.issues, node));
+				issues.push(...nodeHelpers.nodeIssuesToString(node.issues, node));
 			}
 
 			acc[node.id] = issues;
@@ -380,8 +417,12 @@ export function useCanvasMapping({
 				acc[node.id] = true;
 			} else if (nodePinnedDataById.value[node.id]) {
 				acc[node.id] = false;
+			} else if (node.issues && nodeHelpers.nodeIssuesToString(node.issues, node).length) {
+				acc[node.id] = true;
 			} else {
-				acc[node.id] = nodeIssuesById.value[node.id].length > 0;
+				const tasks = workflowsStore.getWorkflowRunData?.[node.name] ?? [];
+
+				acc[node.id] = Boolean(tasks.at(-1)?.error);
 			}
 
 			return acc;
@@ -510,6 +551,26 @@ export function useCanvasMapping({
 		);
 	});
 
+	const simulatedNodeTypeDescriptionByNodeId = computed(() => {
+		return nodes.value.reduce<Record<string, INodeTypeDescription | null>>((acc, node) => {
+			if ([SIMULATE_NODE_TYPE, SIMULATE_TRIGGER_NODE_TYPE].includes(node.type)) {
+				const icon = node.parameters?.icon as string;
+				const iconValue = workflowObject.value.expression.getSimpleParameterValue(
+					node,
+					icon,
+					'internal',
+					{},
+				);
+
+				if (iconValue && typeof iconValue === 'string') {
+					acc[node.id] = nodeTypesStore.getNodeType(iconValue);
+				}
+			}
+
+			return acc;
+		}, {});
+	});
+
 	const mappedNodes = computed<CanvasNode[]>(() => [
 		...nodes.value.map<CanvasNode>((node) => {
 			const inputConnections = workflowObject.value.connectionsByDestinationNode[node.name] ?? {};
@@ -539,6 +600,7 @@ export function useCanvasMapping({
 				execution: {
 					status: nodeExecutionStatusById.value[node.id],
 					waiting: nodeExecutionWaitingById.value[node.id],
+					waitingForNext: nodeExecutionWaitingForNextById.value[node.id],
 					running: nodeExecutionRunningById.value[node.id],
 				},
 				runData: {
@@ -654,6 +716,7 @@ export function useCanvasMapping({
 	return {
 		additionalNodePropertiesById,
 		nodeExecutionRunDataOutputMapById,
+		nodeExecutionWaitingForNextById,
 		nodeIssuesById,
 		nodeHasIssuesById,
 		connections: mappedConnections,

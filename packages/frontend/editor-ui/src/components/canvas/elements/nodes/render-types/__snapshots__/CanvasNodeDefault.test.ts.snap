@@ -4,12 +4,27 @@ exports[`CanvasNodeDefault > configurable > should render configurable node corr
 <div
   class="node configurable"
   data-test-id="canvas-configurable-node"
-  style="--configurable-node--input-count: 0; --canvas-node--main-input-count: 0; --canvas-node--main-output-count: 0;"
+  style="--canvas-node--width: 240px; --canvas-node--height: 100px; --node-icon-size: 40px;"
 >
   <!--v-if-->
-  
-  
-  <!--v-if-->
+  <div
+    class="n8n-node-icon icon icon"
+    shrink="false"
+  >
+    <div
+      class="nodeIconWrapper"
+      style="width: 40px; height: 40px; font-size: 40px; line-height: 40px;"
+    >
+      <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+      
+      <div
+        class="nodeIconPlaceholder"
+      >
+        ?
+      </div>
+      
+    </div>
+  </div>
   <!--v-if-->
   <div
     class="description"
@@ -26,6 +41,7 @@ exports[`CanvasNodeDefault > configurable > should render configurable node corr
       Test Node Subtitle
     </div>
   </div>
+  <!--v-if-->
 </div>
 `;
 
@@ -33,12 +49,27 @@ exports[`CanvasNodeDefault > configuration > should render configurable configur
 <div
   class="node configurable configuration"
   data-test-id="canvas-configurable-node"
-  style="--configurable-node--input-count: 0; --canvas-node--main-input-count: 0; --canvas-node--main-output-count: 0;"
+  style="--canvas-node--width: 240px; --canvas-node--height: 75px; --node-icon-size: 30px;"
 >
   <!--v-if-->
-  
-  
-  <!--v-if-->
+  <div
+    class="n8n-node-icon icon icon"
+    shrink="false"
+  >
+    <div
+      class="nodeIconWrapper"
+      style="width: 30px; height: 30px; font-size: 30px; line-height: 30px;"
+    >
+      <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+      
+      <div
+        class="nodeIconPlaceholder"
+      >
+        ?
+      </div>
+      
+    </div>
+  </div>
   <!--v-if-->
   <div
     class="description"
@@ -55,6 +86,7 @@ exports[`CanvasNodeDefault > configuration > should render configurable configur
       Test Node Subtitle
     </div>
   </div>
+  <!--v-if-->
 </div>
 `;
 
@@ -62,12 +94,27 @@ exports[`CanvasNodeDefault > configuration > should render configuration node co
 <div
   class="node configuration"
   data-test-id="canvas-configuration-node"
-  style="--canvas-node--main-input-count: 0; --canvas-node--main-output-count: 0;"
+  style="--canvas-node--width: 80px; --canvas-node--height: 80px; --node-icon-size: 30px;"
 >
   <!--v-if-->
-  
-  
-  <!--v-if-->
+  <div
+    class="n8n-node-icon icon icon"
+    shrink="false"
+  >
+    <div
+      class="nodeIconWrapper"
+      style="width: 30px; height: 30px; font-size: 30px; line-height: 30px;"
+    >
+      <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+      
+      <div
+        class="nodeIconPlaceholder"
+      >
+        ?
+      </div>
+      
+    </div>
+  </div>
   <!--v-if-->
   <div
     class="description"
@@ -84,6 +131,7 @@ exports[`CanvasNodeDefault > configuration > should render configuration node co
       Test Node Subtitle
     </div>
   </div>
+  <!--v-if-->
 </div>
 `;
 
@@ -91,12 +139,27 @@ exports[`CanvasNodeDefault > should render node correctly 1`] = `
 <div
   class="node"
   data-test-id="canvas-default-node"
-  style="--canvas-node--main-input-count: 0; --canvas-node--main-output-count: 0;"
+  style="--canvas-node--width: 100px; --canvas-node--height: 100px; --node-icon-size: 40px;"
 >
   <!--v-if-->
-  
-  
-  <!--v-if-->
+  <div
+    class="n8n-node-icon icon icon"
+    shrink="false"
+  >
+    <div
+      class="nodeIconWrapper"
+      style="width: 40px; height: 40px; font-size: 40px; line-height: 40px;"
+    >
+      <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+      
+      <div
+        class="nodeIconPlaceholder"
+      >
+        ?
+      </div>
+      
+    </div>
+  </div>
   <!--v-if-->
   <div
     class="description"
@@ -113,6 +176,7 @@ exports[`CanvasNodeDefault > should render node correctly 1`] = `
       Test Node Subtitle
     </div>
   </div>
+  <!--v-if-->
 </div>
 `;
 
@@ -120,12 +184,27 @@ exports[`CanvasNodeDefault > trigger > should render trigger node correctly 1`] 
 <div
   class="node trigger"
   data-test-id="canvas-trigger-node"
-  style="--canvas-node--main-input-count: 0; --canvas-node--main-output-count: 0;"
+  style="--canvas-node--width: 100px; --canvas-node--height: 100px; --node-icon-size: 40px;"
 >
   <!--v-if-->
-  
-  
-  <!--v-if-->
+  <div
+    class="n8n-node-icon icon icon"
+    shrink="false"
+  >
+    <div
+      class="nodeIconWrapper"
+      style="width: 40px; height: 40px; font-size: 40px; line-height: 40px;"
+    >
+      <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+      
+      <div
+        class="nodeIconPlaceholder"
+      >
+        ?
+      </div>
+      
+    </div>
+  </div>
   <!--v-if-->
   <div
     class="description"
@@ -142,5 +221,6 @@ exports[`CanvasNodeDefault > trigger > should render trigger node correctly 1`] 
       Test Node Subtitle
     </div>
   </div>
+  <!--v-if-->
 </div>
 `;

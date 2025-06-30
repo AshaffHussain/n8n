@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const i18n = useI18n();
 
@@ -20,7 +20,10 @@ const emit = defineEmits<{
 			data-test-id="from-ai-override-button"
 			@click="emit('click')"
 		>
-			<AiStarsIcon size="large" :class="$style.aiStarsIcon" />
+			<span>
+				<!-- The span wrapping the icon centers it due to reliance on legacy behavior -->
+				<AiStarsIcon size="large" />
+			</span>
 		</N8nButton>
 	</N8nTooltip>
 </template>
@@ -38,6 +41,11 @@ const emit = defineEmits<{
 	&:hover {
 		color: var(--color-foreground-xdark);
 		background-color: var(--color-secondary);
+
+		svg {
+			// ensure enough contrast in both light and dark mode
+			color: var(--prim-gray-200);
+		}
 	}
 }
 </style>

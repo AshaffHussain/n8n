@@ -1,22 +1,22 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { snakeCase } from 'lodash-es';
+import snakeCase from 'lodash/snakeCase';
 import { useSessionStorage } from '@vueuse/core';
 
 import { N8nButton, N8nInput, N8nTooltip } from '@n8n/design-system/components';
 import { randomInt } from 'n8n-workflow';
 import type { CodeExecutionMode, INodeExecutionData } from 'n8n-workflow';
 
-import type { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import type { INodeUi, Schema } from '@/Interface';
 import { generateCodeForPrompt } from '@/api/ai';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useDataSchema } from '@/composables/useDataSchema';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import {
@@ -54,7 +54,9 @@ const isSubmitEnabled = computed(() => {
 		hasExecutionData.value
 	);
 });
-const hasExecutionData = computed(() => (useNDVStore().ndvInputData || []).length > 0);
+const hasExecutionData = computed(
+	() => (useNDVStore().ndvInputDataWithPinnedData || []).length > 0,
+);
 const loadingString = computed(() =>
 	i18n.baseText(`codeNodeEditor.askAi.loadingPhrase${loadingPhraseIndex.value}` as BaseTextKey),
 );
@@ -104,7 +106,11 @@ function getSchemas() {
 		})
 		.filter((node) => node.schema?.value.length > 0);
 
-	const inputSchema = parentNodesSchemas.shift();
+	// Account for empty objects
+	const inputSchema = parentNodesSchemas.shift() ?? {
+		nodeName: parentNodesNames[0] ?? '',
+		schema: { path: '', type: 'undefined', value: '' },
+	};
 
 	return {
 		parentNodesNames,
@@ -159,7 +165,7 @@ async function onSubmit() {
 		question: prompt.value,
 		context: {
 			schema: schemas.parentNodesSchemas,
-			inputSchema: schemas.inputSchema!,
+			inputSchema: schemas.inputSchema,
 			ndvPushRef: useNDVStore().pushRef,
 			pushRef: rootStore.pushRef,
 		},

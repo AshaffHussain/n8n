@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { INodePropertyTypeOptions, ResourceMapperFields } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
-import { i18n as locale } from '@/plugins/i18n';
+import { i18n as locale } from '@n8n/i18n';
 import { useNodeSpecificationValues } from '@/composables/useNodeSpecificationValues';
 import { N8nInputLabel, N8nSelect, N8nText } from '@n8n/design-system';
 
@@ -131,7 +131,7 @@ defineExpose({
 							<div class="option-headline">
 								{{ option.name }}
 							</div>
-							<div class="option-description" v-n8n-html="option.description" />
+							<div v-n8n-html="option.description" class="option-description" />
 						</div>
 					</N8nOption>
 				</N8nSelect>

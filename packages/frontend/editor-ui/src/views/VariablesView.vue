@@ -1,40 +1,38 @@
 <script lang="ts" setup>
-import { computed, ref, useTemplateRef, onMounted } from 'vue';
+import VariablesForm from '@/components/VariablesForm.vue';
+import VariablesUsageBadge from '@/components/VariablesUsageBadge.vue';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useI18n } from '@n8n/i18n';
+import { useMessage } from '@/composables/useMessage';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useToast } from '@/composables/useToast';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
-import { useI18n } from '@/composables/useI18n';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useToast } from '@/composables/useToast';
-import { useMessage } from '@/composables/useMessage';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { computed, onMounted, ref, useTemplateRef } from 'vue';
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
-import VariablesForm from '@/components/VariablesForm.vue';
-import VariablesUsageBadge from '@/components/VariablesUsageBadge.vue';
 
-import ResourcesListLayout, {
-	type Resource,
-	type BaseFilters,
-	type VariableResource,
-} from '@/components/layouts/ResourcesListLayout.vue';
+import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+import type { BaseFilters, Resource, VariableResource } from '@/Interface';
 
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
 import type { DatatableColumn, EnvironmentVariable } from '@/Interface';
-import { uid } from '@n8n/design-system/utils';
-import { getResourcePermissions } from '@/permissions';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-import { useAsyncState } from '@vueuse/core';
-import { pickBy } from 'lodash-es';
+import { getResourcePermissions } from '@n8n/permissions';
 import {
-	N8nButton,
-	N8nTooltip,
 	N8nActionBox,
-	N8nInputLabel,
-	N8nCheckbox,
 	N8nBadge,
+	N8nButton,
+	N8nCheckbox,
+	N8nInputLabel,
+	N8nTooltip,
 } from '@n8n/design-system';
+import { uid } from '@n8n/design-system/utils';
+import { useAsyncState } from '@vueuse/core';
+import pickBy from 'lodash/pickBy';
+import type { ComponentExposed } from 'vue-component-type-helpers';
 
 const settingsStore = useSettingsStore();
 const environmentsStore = useEnvironmentsStore();
@@ -47,7 +45,7 @@ const sourceControlStore = useSourceControlStore();
 const route = useRoute();
 const router = useRouter();
 
-const layoutRef = useTemplateRef<InstanceType<typeof ResourcesListLayout>>('layoutRef');
+const layoutRef = useTemplateRef<ComponentExposed<typeof ResourcesListLayout>>('layoutRef');
 
 const { showError } = useToast();
 
@@ -275,7 +273,7 @@ onMounted(() => {
 			<N8nTooltip placement="top" :disabled="canCreateVariables">
 				<div>
 					<N8nButton
-						size="large"
+						size="medium"
 						block
 						:disabled="!canCreateVariables"
 						data-test-id="resources-list-add"
@@ -401,6 +399,10 @@ onMounted(() => {
 			.action-buttons {
 				opacity: 1;
 			}
+		}
+
+		td:nth-child(2) {
+			white-space: normal;
 		}
 	}
 

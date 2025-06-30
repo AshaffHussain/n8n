@@ -4,8 +4,8 @@ import { EnterpriseEditionFeature } from '@/constants';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectSharingData } from '@/types/projects.types';
 import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
-import type { BaseFilters } from '../layouts/ResourcesListLayout.vue';
-import { useI18n } from '@/composables/useI18n';
+import type { BaseFilters } from '@/Interface';
+import { useI18n } from '@n8n/i18n';
 
 type IResourceFiltersType = Record<string, boolean | string | string[]>;
 
@@ -113,6 +113,7 @@ onBeforeMount(async () => {
 			<n8n-button
 				icon="filter"
 				type="tertiary"
+				size="small"
 				:active="hasFilters"
 				:class="{
 					[$style['filter-button']]: true,
@@ -165,10 +166,11 @@ onBeforeMount(async () => {
 
 <style lang="scss" module>
 .filter-button {
-	height: 40px;
+	height: 30px;
 	align-items: center;
 
 	&.no-label {
+		width: 30px;
 		span + span {
 			margin: 0;
 		}

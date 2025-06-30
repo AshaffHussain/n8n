@@ -13,14 +13,9 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { CanvasNodeDirtiness } from '@/types';
 import { type FrontendSettings } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
-import { NodeConnectionType, type IConnections, type IRunData } from 'n8n-workflow';
+import { NodeConnectionTypes, type IConnections, type IRunData } from 'n8n-workflow';
 import { defineComponent } from 'vue';
-import {
-	createRouter,
-	createWebHistory,
-	useRouter,
-	type RouteLocationNormalizedLoaded,
-} from 'vue-router';
+import { createRouter, createWebHistory, type RouteLocationNormalizedLoaded } from 'vue-router';
 
 describe(useNodeDirtiness, () => {
 	let nodeTypeStore: ReturnType<typeof useNodeTypesStore>;
@@ -42,7 +37,7 @@ describe(useNodeDirtiness, () => {
 				workflowsStore = useWorkflowsStore();
 				settingsStore = useSettingsStore();
 				historyHelper = useHistoryHelper({} as RouteLocationNormalizedLoaded);
-				canvasOperations = useCanvasOperations({ router: useRouter() });
+				canvasOperations = useCanvasOperations();
 				uiStore = useUIStore();
 
 				nodeTypeStore.setNodeTypes(defaultNodeDescriptions);
@@ -156,6 +151,7 @@ describe(useNodeDirtiness, () => {
 								{
 									startTime: +runAt,
 									executionTime: 0,
+									executionIndex: 0,
 									executionStatus: 'success',
 									source: [],
 								},
@@ -396,8 +392,8 @@ describe(useNodeDirtiness, () => {
 					const from = arr[i - 1].slice(0, 1);
 					const to = arr[i + 1].slice(0, 1);
 					const type = arr[i - 1].includes('🧠')
-						? NodeConnectionType.AiAgent
-						: NodeConnectionType.Main;
+						? NodeConnectionTypes.AiAgent
+						: NodeConnectionTypes.Main;
 					const conns = connections[from]?.[type] ?? [];
 					const conn = conns[0] ?? [];
 
@@ -423,6 +419,7 @@ describe(useNodeDirtiness, () => {
 						{
 							startTime: +NODE_RUN_AT,
 							executionTime: 0,
+							executionIndex: 0,
 							executionStatus: 'success',
 							source: [],
 						},

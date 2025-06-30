@@ -2,14 +2,15 @@
 import Modal from './Modal.vue';
 import { SOURCE_CONTROL_PULL_MODAL_KEY, VIEWS } from '@/constants';
 import type { EventBus } from '@n8n/utils/event-bus';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useLoadingService } from '@/composables/useLoadingService';
 import { useToast } from '@/composables/useToast';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { computed } from 'vue';
 import { sourceControlEventBus } from '@/event-bus/source-control';
-import { orderBy, groupBy } from 'lodash-es';
+import groupBy from 'lodash/groupBy';
+import orderBy from 'lodash/orderBy';
 import { N8nBadge, N8nText, N8nLink, N8nButton } from '@n8n/design-system';
 import { RouterLink } from 'vue-router';
 import {
@@ -55,6 +56,7 @@ const ITEM_TITLES: Record<Exclude<SourceControlledFileType, 'file'>, string> = {
 	[SOURCE_CONTROL_FILE_TYPE.credential]: 'Credentials',
 	[SOURCE_CONTROL_FILE_TYPE.variables]: 'Variables',
 	[SOURCE_CONTROL_FILE_TYPE.tags]: 'Tags',
+	[SOURCE_CONTROL_FILE_TYPE.folders]: 'Folders',
 } as const;
 
 const files = computed<ItemsList>(() =>
@@ -63,6 +65,7 @@ const files = computed<ItemsList>(() =>
 		SOURCE_CONTROL_FILE_TYPE.credential,
 		SOURCE_CONTROL_FILE_TYPE.variables,
 		SOURCE_CONTROL_FILE_TYPE.tags,
+		SOURCE_CONTROL_FILE_TYPE.folders,
 	].reduce<ItemsList>((acc, fileType) => {
 		if (!groupedFilesByType.value[fileType]) {
 			return acc;
